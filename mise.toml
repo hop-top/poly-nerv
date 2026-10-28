@@ -12,5 +12,7 @@ rust = "1.99.0"
 # Proto toolchain — buf drives codegen for all 4 SDK trees
 # (Go + ConnectRPC, TS connect-es, Python gRPC, PHP). Rust uses build.rs.
 buf = "1.74.0"
+# protoc for sdk/rs build.rs (tonic-prost-build); CI installs the same release.
+protoc = "36.2"
 # Relative-link checker used by `make links` and `make check`.
 lychee = "0.24.2"

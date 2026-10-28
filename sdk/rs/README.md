@@ -17,8 +17,13 @@ tokio = { version = "1", features = ["full"] }
 ```
 
 Requires Rust 1.88 or newer (`rust-version` in `Cargo.toml`).
-A working `protoc` (>= 3.21) is required on the build machine: the
-proto schema is compiled by `tonic-prost-build` in `build.rs`.
+A working `protoc` (>= 3.21) is required on the build machine, including
+when you depend on this crate: the proto schema is compiled by
+`tonic-prost-build` in `build.rs`. Install it with your package manager
+(`apt install protobuf-compiler`, `brew install protobuf`) or from the
+[protobuf releases](https://github.com/protocolbuffers/protobuf/releases),
+or point the `PROTOC` environment variable at a binary. CI and
+`mise.toml` use protoc 36.2.
 
 ## Quickstart
 
