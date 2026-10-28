@@ -40,6 +40,9 @@ final class WireTest extends TestCase
         if (extension_loaded('grpc')) {
             self::markTestSkipped('ext-grpc loaded; absence-path covered in CI matrix entries without the extension');
         }
+        // grpc/grpc's BaseStub is installed regardless of the
+        // extension; the guard must key on the extension itself.
+        self::assertTrue(class_exists(\Grpc\BaseStub::class), 'grpc/grpc not installed');
         $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessageMatches('/ext-grpc|PECL grpc/');
         new GrpcTransport('unix:/tmp/nerv-wiretest.sock');

@@ -31,6 +31,9 @@ brew install grpc
 
 The extension is declared in `composer.json` under `suggest:` (not
 `require:`) so the SDK installs cleanly on stub-only environments.
+The pure-PHP `grpc/grpc` package (the `Grpc\BaseStub` client base
+class the generated stubs extend) is a regular dependency; it installs
+without the extension.
 Calling `Client::fromSocket()` / `fromBaseUrl()` without the extension
 throws a `RuntimeException` with the install command in the message.
 
