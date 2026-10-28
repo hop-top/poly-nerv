@@ -52,13 +52,15 @@ func (a *Adapter) Detect() (internal.DetectResult, error) {
 }
 
 // Capabilities reports which hook points Aider supports.
-// Aider has no native hook system; all events are synthesized.
+// Aider has no native hook system. The config nerv installs wires
+// lint-cmd/test-cmd, which fire around edits (tool use); nothing fires
+// at process start or exit, so session hooks are not claimed.
 func (a *Adapter) Capabilities() internal.CapabilityMap {
 	return internal.CapabilityMap{
 		PreToolUse:  true,
 		PostToolUse: true,
-		PreSession:  true,
-		PostSession: true,
+		PreSession:  false,
+		PostSession: false,
 		Streaming:   false,
 	}
 }
