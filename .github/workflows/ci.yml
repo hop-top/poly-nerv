@@ -164,7 +164,7 @@ jobs:
           workspaces: sdk/rs
       # build.rs compiles contracts/proto with tonic-prost-build, which
       # shells out to protoc. Official release zip, checksum-verified;
-      # version matches mise.toml `protoc`. Not tracked by Dependabot:
+      # version matches mise.toml `protoc` and publish.yml nerv-rs protoc-version. Not tracked by Dependabot:
       # bump both by hand (14-day age gate).
       - name: Install protoc
         working-directory: .
