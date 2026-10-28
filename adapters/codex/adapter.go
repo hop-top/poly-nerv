@@ -1,6 +1,7 @@
 package codex
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -131,38 +132,51 @@ type codexHook struct {
 }
 
 // MergeConfig merges nerv hook config into Codex's hooks.json format.
-// The existing config is preserved; nerv entries are added/updated.
+// The existing config is preserved verbatim, including keys and fields
+// nerv does not model; nerv entries are added without duplication.
 func (a *Adapter) MergeConfig(existing []byte) ([]byte, error) {
-	var cfg codexHooksConfig
-
-	if len(existing) > 0 {
-		if err := json.Unmarshal(existing, &cfg); err != nil {
+	cfg := map[string]any{}
+	if len(bytes.TrimSpace(existing)) > 0 {
+		dec := json.NewDecoder(bytes.NewReader(existing))
+		dec.UseNumber() // keep large integers exact
+		if err := dec.Decode(&cfg); err != nil {
 			return nil, fmt.Errorf("codex: parse existing config: %w", err)
+		}
+		if cfg == nil { // literal null
+			cfg = map[string]any{}
 		}
 	}
 
-	if cfg.Hooks == nil {
-		cfg.Hooks = make(map[string][]codexHookEntry)
+	hooks := map[string]any{}
+	if raw, ok := cfg["hooks"]; ok && raw != nil {
+		m, ok := raw.(map[string]any)
+		if !ok {
+			return nil, fmt.Errorf("codex: \"hooks\" must be an object")
+		}
+		hooks = m
 	}
 
 	nervCommand := "nerv dispatch"
 
-	// Register nerv handler for each native event.
-	nativeEvents := []string{
-		"SessionStart", "UserPromptSubmit", "Stop",
+	// Register nerv handler for each native event, then the shell
+	// matcher for PreToolUse/PostToolUse.
+	registrations := []struct{ event, matcher string }{
+		{"SessionStart", ""},
+		{"UserPromptSubmit", ""},
+		{"Stop", ""},
+		{"PreToolUse", "shell"},
+		{"PostToolUse", "shell"},
 	}
-	for _, event := range nativeEvents {
-		cfg.Hooks[event] = mergeNervEntry(
-			cfg.Hooks[event], "", nervCommand,
+	for _, r := range registrations {
+		entries, err := mergeNervEntry(
+			hooks[r.event], r.matcher, nervCommand,
 		)
+		if err != nil {
+			return nil, fmt.Errorf("codex: hooks.%s: %w", r.event, err)
+		}
+		hooks[r.event] = entries
 	}
-
-	// Register shell matcher for PreToolUse/PostToolUse.
-	for _, event := range []string{"PreToolUse", "PostToolUse"} {
-		cfg.Hooks[event] = mergeNervEntry(
-			cfg.Hooks[event], "shell", nervCommand,
-		)
-	}
+	cfg["hooks"] = hooks
 
 	return json.MarshalIndent(cfg, "", "  ")
 }
@@ -185,27 +199,47 @@ func (a *Adapter) ShellMatcher() *ShellMatcher {
 }
 
 // mergeNervEntry ensures a nerv hook entry exists for the given matcher
-// without duplicating. Returns the updated entry list.
-func mergeNervEntry(
-	entries []codexHookEntry, matcher, command string,
-) []codexHookEntry {
-	nervHook := codexHook{Type: "command", Command: command}
-
-	for i, entry := range entries {
-		if entry.Matcher == matcher {
-			// Check if nerv hook already exists.
-			for _, h := range entry.Hooks {
-				if h.Command == command {
-					return entries
-				}
-			}
-			entries[i].Hooks = append(entries[i].Hooks, nervHook)
-			return entries
+// without duplicating. raw is the decoded event list (nil when absent);
+// unknown fields on entries and hooks are left untouched.
+func mergeNervEntry(raw any, matcher, command string) ([]any, error) {
+	var entries []any
+	if raw != nil {
+		list, ok := raw.([]any)
+		if !ok {
+			return nil, fmt.Errorf("must be an array")
 		}
+		entries = list
 	}
 
-	return append(entries, codexHookEntry{
-		Matcher: matcher,
-		Hooks:   []codexHook{nervHook},
-	})
+	nervHook := map[string]any{"type": "command", "command": command}
+
+	for i, e := range entries {
+		entry, ok := e.(map[string]any)
+		if !ok {
+			return nil, fmt.Errorf("entry %d must be an object", i)
+		}
+		m, _ := entry["matcher"].(string)
+		if m != matcher {
+			continue
+		}
+		var list []any
+		if h, ok := entry["hooks"]; ok && h != nil {
+			if list, ok = h.([]any); !ok {
+				return nil, fmt.Errorf("entry %d hooks must be an array", i)
+			}
+		}
+		for _, h := range list {
+			if hm, ok := h.(map[string]any); ok && hm["command"] == command {
+				return entries, nil
+			}
+		}
+		entry["hooks"] = append(list, nervHook)
+		return entries, nil
+	}
+
+	entry := map[string]any{"hooks": []any{nervHook}}
+	if matcher != "" {
+		entry["matcher"] = matcher
+	}
+	return append(entries, entry), nil
 }
