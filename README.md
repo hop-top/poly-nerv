@@ -111,7 +111,7 @@ socket.
 | CLI/daemon, Go SDK | Go 1.27.3                               |
 | TS SDK     | Node.js >= 22.12                                |
 | Python SDK | Python >= 3.11                                  |
-| Rust SDK   | Rust >= 1.88                                    |
+| Rust SDK   | Rust >= 1.88, `protoc` >= 3.21 at build time    |
 | PHP SDK    | PHP >= 8.2 (wire transport: PECL `grpc`)        |
 | Shell SDK  | Bash 4+, `jq`                                   |
 

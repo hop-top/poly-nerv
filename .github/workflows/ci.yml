@@ -162,6 +162,22 @@ jobs:
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
         with:
           workspaces: sdk/rs
+      # build.rs compiles contracts/proto with tonic-prost-build, which
+      # shells out to protoc. Official release zip, checksum-verified;
+      # version matches mise.toml `protoc`. Not tracked by Dependabot:
+      # bump both by hand (14-day age gate).
+      - name: Install protoc
+        working-directory: .
+        env:
+          PROTOC_VERSION: '36.2'
+          PROTOC_SHA256: 121f6c7afe1d4d0e3ea6aab9432038599250134cbf4474cb1167d2c7decd4278
+        run: |
+          zip="$RUNNER_TEMP/protoc.zip"
+          curl -fsSL -o "$zip" "https://github.com/protocolbuffers/protobuf/releases/download/v${PROTOC_VERSION}/protoc-${PROTOC_VERSION}-linux-x86_64.zip"
+          echo "${PROTOC_SHA256}  ${zip}" | sha256sum -c -
+          unzip -q "$zip" -d "$RUNNER_TEMP/protoc"
+          echo "$RUNNER_TEMP/protoc/bin" >> "$GITHUB_PATH"
+          "$RUNNER_TEMP/protoc/bin/protoc" --version
       - run: cargo build
       - run: cargo test
       - run: cargo clippy --all-targets -- -D warnings

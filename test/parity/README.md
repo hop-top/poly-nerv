@@ -39,6 +39,7 @@ preconditions per language:
 | `TestParity_TypeScript` | `sdk/ts/node_modules` missing | `cd sdk/ts && pnpm install` |
 | `TestParity_Python` | `sdk/py/.venv/bin/python3` missing | `python3.12 -m venv sdk/py/.venv && sdk/py/.venv/bin/pip install -e sdk/py` |
 | `TestParity_Rust` | `cargo` missing | install Rust >= 1.88 (`rust-version` in `sdk/rs/Cargo.toml`) |
+| `TestParity_Rust` | example build fails: `Could not find protoc` | install `protoc` (>= 3.21) or set `PROTOC` |
 | `TestParity_Rust` | first run | harness pre-builds the example once via `sync.Once`; subsequent runs reuse `sdk/rs/target/debug/examples/parity_client` |
 | `TestParity_PHP` | `php` missing | install PHP 8.2+ |
 | `TestParity_PHP` | `sdk/php/vendor/` missing AND `composer` missing | install Composer |
