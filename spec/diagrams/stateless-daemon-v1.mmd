@@ -1,0 +1,40 @@
+%% Nerv Stateless vs Daemon Mode
+%%
+%% Default: stateless (fork per event).
+%% Opt-in: daemon (persistent socket).
+%% Transition via config flag or `nerv daemon start`.
+
+flowchart TB
+    subgraph Stateless["Stateless Mode (default)"]
+        S1[CLI Adapter] -->|fork| S2[nervd process]
+        S2 --> S3[Read envelope from stdin]
+        S3 --> S4[Dispatch to handlers]
+        S4 --> S5[Write decision to stdout]
+        S5 --> S6[Exit]
+    end
+
+    subgraph Daemon["Daemon Mode (opt-in)"]
+        D0[nerv daemon start] --> D1[Listen on unix socket]
+        D1 --> D2[Accept connection]
+        D2 --> D3[Hello handshake]
+        D3 --> D4[Receive envelope]
+        D4 --> D5[Dispatch to handlers]
+        D5 --> D6[Send decision]
+        D6 -->|keep alive| D4
+        D6 -->|heartbeat 30s| D4
+        D2 -->|new client| D3
+    end
+
+    Trigger{Config: daemon=true<br/>or nerv daemon start}
+    Stateless -.->|transition| Trigger
+    Trigger -.-> Daemon
+
+    subgraph AdapterView["Adapter Perspective"]
+        A1[CLI event fires]
+        A2{daemon running?}
+        A1 --> A2
+        A2 -->|no| A3[Fork nervd + pipe stdin/stdout]
+        A2 -->|yes| A4[Connect socket + send envelope]
+        A3 --> A5[Decision]
+        A4 --> A5
+    end

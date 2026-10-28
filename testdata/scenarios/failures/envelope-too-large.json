@@ -1,0 +1,18 @@
+{
+  "name": "envelope_too_large",
+  "description": "2MB envelope exceeds size limit — fail-safe rejects",
+  "input": {
+    "event": "PreToolUse",
+    "cli": {"name": "claude", "version": "1.0.0"},
+    "session": {"id": "fail-size-001"},
+    "payload": {
+      "tool": "bash",
+      "input": {"command": "echo oversize"},
+      "_size_bytes": 2097152
+    }
+  },
+  "expected": {
+    "action": "block",
+    "reason": "envelope exceeds maximum size (2MB)"
+  }
+}

@@ -1,0 +1,15 @@
+# Non-rm sudo invocations
+sudo apt update
+sudo apt install -y nginx
+sudo systemctl restart docker
+sudo chown jadb:staff file
+# rm without recursion
+sudo rm /tmp/file
+sudo rm -f /tmp/file
+# Non-pipe curl/wget
+sudo curl https://example.com -o /etc/file
+sudo wget -O /etc/file https://example.com
+# Strings inside quotes cannot be distinguished from real commands by
+# the regex matcher; harmless echoes that mention 'sudo rm -rf' will
+# match. This is intentional — a stricter matcher would need a shell
+# parser.

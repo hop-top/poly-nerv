@@ -1,0 +1,53 @@
+%% inbox_message_* event payload schema — class diagram, v1.
+%% Author: $USER  Last updated: 2026-04-26
+classDiagram
+    class Event {
+        +Topic Topic
+        +Source string
+        +Timestamp time.Time
+        +Payload any
+    }
+    class InboxMessageBase {
+        <<abstract>>
+        +schema_version string
+        +msg_id string
+        +ts time.Time
+    }
+    class InboxMessageAdded {
+        +agent_id string
+        +inbox_id string
+        +source_session_id string
+        +kind string
+        +payload_ref string
+    }
+    class InboxMessageUpdated {
+        +fields_changed []string
+    }
+    class InboxMessagePromoted {
+        +target Target
+        +target_id string
+    }
+    class InboxMessageDropped {
+        +reason DropReason
+    }
+    class Target {
+        <<enumeration>>
+        tlc-task
+        ctxt-object
+        other
+    }
+    class DropReason {
+        <<enumeration>>
+        user-deleted
+        ttl-expired
+        duplicate
+    }
+    Event "1" *-- "1" InboxMessageBase : Payload
+    InboxMessageBase <|-- InboxMessageAdded
+    InboxMessageBase <|-- InboxMessageUpdated
+    InboxMessageBase <|-- InboxMessagePromoted
+    InboxMessageBase <|-- InboxMessageDropped
+    InboxMessagePromoted --> Target
+    InboxMessageDropped --> DropReason
+    note for InboxMessageBase "topic = inbox_message_<verb><br/>source = nerv.builtin.<hook-name>"
+    note for InboxMessageAdded "RESERVED (out of scope):<br/>inbox_created<br/>inbox_destroyed"

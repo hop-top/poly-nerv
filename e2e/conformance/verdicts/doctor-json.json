@@ -1,0 +1,23 @@
+{
+  "scenario_id": "doctor-json",
+  "verdict": "pass",
+  "exit_code": 0,
+  "tier": 3,
+  "scored_at": "2026-08-08T20:03:31.008272Z",
+  "grader_version": "1.0.0",
+  "rules_version": "2026.05.12.1",
+  "facets": [
+    {
+      "factor": 3,
+      "status": "pass"
+    },
+    {
+      "factor": 8,
+      "status": "pass"
+    },
+    {
+      "factor": 11,
+      "status": "pass"
+    }
+  ]
+}

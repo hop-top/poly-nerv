@@ -1,0 +1,7 @@
+{
+  "envelope_id": "01JCRTX0EXAMPLETOOLCALL0001",
+  "turn_id": "01JCRTX0TURN0010",
+  "content": [
+    { "type": "text", "text": "What's the weather in Tokyo?" }
+  ]
+}

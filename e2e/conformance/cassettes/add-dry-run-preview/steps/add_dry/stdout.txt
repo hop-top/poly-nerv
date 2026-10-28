@@ -1,0 +1,28 @@
+{
+  "command": "nerv add",
+  "args": {
+    "hook": "demo-hook",
+    "source": "./handler.sh"
+  },
+  "effects": [
+    {
+      "kind": "create",
+      "target": "/home/dev/.local/share/nerv/hooks/demo-hook/handler",
+      "reversible": true,
+      "detail": "fetch handler from ./handler.sh"
+    },
+    {
+      "kind": "update",
+      "target": ".nerv/hooks.yaml",
+      "reversible": true,
+      "detail": "register hook \"demo-hook\" (on: tool_call)"
+    },
+    {
+      "kind": "update",
+      "target": ".nerv/hooks.lock",
+      "reversible": true,
+      "detail": "pin resolved source + sha256"
+    }
+  ],
+  "generated_at": "2026-08-08T20:02:43.66451Z"
+}

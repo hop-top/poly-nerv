@@ -1,0 +1,32 @@
+{
+  "name": "opencode-block-rm",
+  "description": "OpenCode CLI: tool.execute.before translated to PreToolUse; rm -rf blocked",
+  "cli": "opencode",
+  "native_event": "tool.execute.before",
+  "hooks": {
+    "version": "1.0-draft",
+    "hooks": [
+      {
+        "name": "block-rm",
+        "on": "PreToolUse",
+        "match": "Bash|shell",
+        "run": "./testdata/handlers/block-rm-rf.sh"
+      }
+    ]
+  },
+  "envelope": {
+    "event": "PreToolUse",
+    "cli": {"name": "opencode", "version": "0.1.0"},
+    "session": {"id": "parity-opencode"},
+    "synthesized": true,
+    "synthesis_source": "tool.execute.before",
+    "payload": {
+      "tool_name": "Bash",
+      "tool_input": {"command": "rm -rf /"}
+    }
+  },
+  "expected": {
+    "action": "block",
+    "message_contains": "blocked"
+  }
+}

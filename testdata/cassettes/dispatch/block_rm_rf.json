@@ -1,0 +1,17 @@
+{
+  "name": "block_rm_rf",
+  "description": "PreToolUse with rm -rf command returns block",
+  "input": {
+    "event": "PreToolUse",
+    "cli": {"name": "claude", "version": "1.0.0"},
+    "session": {"id": "test-456"},
+    "payload": {
+      "tool": "bash",
+      "input": {"command": "rm -rf /"}
+    }
+  },
+  "expected": {
+    "action": "block",
+    "message": "destructive command blocked"
+  }
+}

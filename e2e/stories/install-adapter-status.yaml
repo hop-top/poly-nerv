@@ -1,0 +1,21 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/hop-top/kit/main/contracts/story-schema.json
+schema_version: "1"
+story_id: nerv.install.adapter-status-audit
+title: Audit which AI CLIs have the nerv adapter installed
+binary: nerv
+intent: |
+  A platform engineer rolling nerv out to a team wants to know which AI
+  CLIs are present on a machine and which of them already carry the nerv
+  adapter. They run nerv install status to get a per-CLI row covering
+  installed state, version, adapter state and configuration drift, then
+  use that table to decide where an install is still required.
+preconditions:
+  - at least one supported AI CLI is installed on the machine
+steps:
+  - id: adapter_status
+    intent: |
+      Print the adapter installation state for every known AI CLI. The
+      engineer scans the adapter and drift columns to find CLIs that
+      still need nerv install add before the rollout is complete.
+    invoke: ["nerv", "install", "status"]
+    capture: [exit_code, stdout]

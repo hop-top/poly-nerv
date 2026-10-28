@@ -1,0 +1,10 @@
+name: slow-query-warn
+version: "1.0.0"
+description: Warns when shell commands exceed 30 seconds
+author: nerv
+license: MIT
+events:
+  - PostToolUse
+requires:
+  capabilities: []
+  nerv_version: ">=1.0.0"

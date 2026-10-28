@@ -1,0 +1,11 @@
+name: audit-log
+version: "1.0.0"
+description: Logs all tool calls to a file for auditing
+author: nerv
+license: MIT
+events:
+  - PreToolUse
+requires:
+  capabilities:
+    - fs_write
+  nerv_version: ">=1.0.0"

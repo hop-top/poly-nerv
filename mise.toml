@@ -1,0 +1,16 @@
+# mise configuration for nerv
+# Install tools: mise install
+# Docs: https://mise.jdx.dev
+
+[tools]
+go = "1.27.3"
+# SDK toolchains: CI and the parity harness run these exact releases.
+node = "24.22.1"
+pnpm = "12.16.0"
+python = "3.14.10"
+rust = "1.99.0"
+# Proto toolchain — buf drives codegen for all 4 SDK trees
+# (Go + ConnectRPC, TS connect-es, Python gRPC, PHP). Rust uses build.rs.
+buf = "1.74.0"
+# Relative-link checker used by `make links` and `make check`.
+lychee = "0.24.2"

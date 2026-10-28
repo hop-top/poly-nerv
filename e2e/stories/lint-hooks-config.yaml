@@ -1,0 +1,20 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/hop-top/kit/main/contracts/story-schema.json
+schema_version: "1"
+story_id: nerv.lint.validate-hooks-config
+title: Lint hooks.yaml before committing a change
+binary: nerv
+intent: |
+  A platform engineer editing the project hook configuration wants to
+  catch errors and warnings before the daemon ever loads the file. They
+  run nerv lint over the discovered hooks.yaml and read the findings,
+  treating a clean run as the go-ahead to commit the change.
+preconditions:
+  - a hooks.yaml is discoverable from the working directory
+steps:
+  - id: lint
+    intent: |
+      Validate the discovered hooks.yaml and report errors and warnings.
+      The engineer expects a clean report before committing the edited
+      hook configuration.
+    invoke: ["nerv", "lint"]
+    capture: [exit_code, stdout, stderr]

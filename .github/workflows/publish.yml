@@ -1,0 +1,69 @@
+name: publish
+
+on:
+  push:
+    tags: ['*/v*']
+
+jobs:
+  publish:
+    permissions:
+      contents: read
+      id-token: write
+    uses: hop-top/.github/.github/workflows/publish-on-tag.yml@986d635fef020ef3d3db0594b8b4cad837cc05c8 # v0.16.0
+    secrets:
+      NPM_REGISTRY_TOKEN: ${{ secrets.NPM_REGISTRY_TOKEN }}
+      CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+      PYPI_REGISTRY_TOKEN: ${{ secrets.PYPI_REGISTRY_TOKEN }}
+      PACKAGIST_USERNAME: ${{ secrets.PACKAGIST_USERNAME }}
+      PACKAGIST_TOKEN: ${{ secrets.PACKAGIST_TOKEN }}
+      GH_MIRROR_PAT: ${{ secrets.GH_MIRROR_PAT }}
+    with:
+      homepage: https://github.com/hop-top/poly-nerv
+      description-prefix: "READ-ONLY MIRROR"
+      ecosystems: |
+        # Go modules release through the mirror + module proxy (no
+        # publish job). Both live on the hop-top/nerv mirror:
+        #   hop.top/nerv        tag nerv/vX.Y.Z    -> mirror vX.Y.Z
+        #   hop.top/nerv/sdk/go tag nerv-go/vX.Y.Z -> mirror sdk/go/vX.Y.Z
+        # nerv-go is a nested module: tag-only pushes just its prefixed
+        # tag onto the commit nerv's mirror push created. Tag nerv no
+        # later than nerv-go.
+        nerv:
+          dir: .
+          ecosystem: go
+          mirror: hop-top/nerv
+        nerv-go:
+          dir: sdk/go
+          ecosystem: go
+          mirror: hop-top/nerv
+          mirror-mode: tag-only
+          mirror-tag-prefix: sdk/go/
+        nerv-ts:
+          dir: sdk/ts
+          ecosystem: ts
+          package: "@hop-top/nerv"
+          mirror: hop-top/nerv-ts
+          node-version: '24.22.1'
+          test-command: pnpm install --frozen-lockfile --ignore-scripts && pnpm vitest run
+        nerv-py:
+          dir: sdk/py
+          ecosystem: py
+          package: nerv-sdk
+          mirror: hop-top/nerv-py
+          python-version: '3.14.10'
+          test-command: pip install -e ".[dev]" && pytest
+          # PyPI OIDC trusted publishing has returned `invalid-publisher`
+          # on sibling polyglot repos despite correct pending-publisher
+          # claims; use token auth until OIDC is debugged upstream.
+          pypi-auth: token
+        nerv-rs:
+          dir: sdk/rs
+          ecosystem: rs
+          package: hop-top-nerv
+          mirror: hop-top/nerv-rs
+          rust-toolchain: '1.99.0'
+        nerv-php:
+          dir: sdk/php
+          ecosystem: php
+          package: hop-top/nerv
+          mirror: hop-top/nerv-php

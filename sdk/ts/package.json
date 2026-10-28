@@ -1,0 +1,28 @@
+{
+  "name": "@hop-top/nerv",
+  "version": "0.1.0-alpha.0",
+  "description": "TypeScript client + handler SDK for nerv",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": ["dist", "src", "README.md"],
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run",
+    "prepublishOnly": "npm run build"
+  },
+  "engines": {
+    "node": ">=22.12"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "@bufbuild/protobuf": "^2",
+    "@connectrpc/connect": "^2",
+    "@connectrpc/connect-node": "^2"
+  },
+  "devDependencies": {
+    "@types/node": "^24",
+    "typescript": "^7",
+    "vitest": "^5"
+  }
+}

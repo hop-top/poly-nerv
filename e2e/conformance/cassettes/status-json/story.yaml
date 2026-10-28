@@ -1,0 +1,18 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/hop-top/kit/main/contracts/story-schema.json
+schema_version: "1"
+story_id: nerv.conformance.status-json
+title: Read daemon and hook state as structured JSON
+binary: nerv
+intent: |
+  An automation wiring nerv into a larger pipeline needs the daemon,
+  adapter, hook, and event-log state in a machine-parseable shape. It
+  requests JSON output and expects every state dimension the human
+  table shows to be present as typed fields, with nothing to
+  screen-scrape and a clean zero exit.
+steps:
+  - id: status_json
+    intent: |
+      Render the full status report as JSON on stdout so a program can
+      read daemon state, hook counts, and event-log presence directly.
+    invoke: ["nerv", "status", "--format", "json"]
+    capture: [exit_code, stdout, stderr]

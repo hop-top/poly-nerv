@@ -1,0 +1,51 @@
+%% BuiltinEntry schema — fields and downstream consumers
+%%
+%% spec/builtins.yaml is the source; wizard + future marketplace read it.
+
+classDiagram
+    class BuiltinEntry {
+        +string id
+        +string description
+        +string prompt
+        +bool default_enabled
+        +string risk_level
+        +string[] events
+        +string[] requires_cli
+        +string hook_template
+    }
+
+    class WizardInit {
+        reads BuiltinEntry.prompt
+        reads BuiltinEntry.default_enabled
+        reads BuiltinEntry.risk_level
+        filters on BuiltinEntry.requires_cli
+        writes hook_template to hooks.yaml
+    }
+
+    class BuiltinRegistry {
+        +List() []BuiltinEntry
+    }
+
+    class WizardState {
+        +string version
+        +string seen_at
+        +string detected_cli
+        +string[] seen_builtins
+    }
+
+    class HooksConfig {
+        +string version
+        +HookDefaults defaults
+        +HookEntry[] hooks
+    }
+
+    class CapabilitiesYAML {
+        per-adapter event support
+        native / synthesized / unsupported
+    }
+
+    BuiltinRegistry "1" --> "*" BuiltinEntry : contains
+    WizardInit --> BuiltinRegistry : reads
+    WizardInit --> WizardState : reads + writes
+    WizardInit --> HooksConfig : appends enabled hooks
+    WizardInit --> CapabilitiesYAML : filters unsupported events

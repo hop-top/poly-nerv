@@ -1,0 +1,25 @@
+# Format: <rule-id>\t<command>
+
+# rm-rf-root
+rm-rf-root	rm -rf /
+rm-rf-root	rm -fr /
+rm-rf-root	rm -rfv /
+rm-rf-root	cd /tmp && rm -rf /
+
+# rm-rf-home
+rm-rf-home	rm -rf $HOME
+rm-rf-home	rm -rf $HOME/
+rm-rf-home	rm -rf ~
+rm-rf-home	rm -rf ~/
+rm-rf-home	rm -rf /home/dev
+rm-rf-home	rm -rf /Users/alice/
+rm-rf-home	rm -rf /home/runner
+
+# rm-no-preserve
+rm-no-preserve	rm -rf --no-preserve-root /
+rm-no-preserve	sudo rm -rf --no-preserve-root /tmp/x
+
+# rm-rf-glob
+rm-rf-glob	rm -rf *
+rm-rf-glob	rm -fr *
+rm-rf-glob	rm -rfv *

@@ -1,0 +1,91 @@
+# Goose CLI capability map for nerv adapter.
+# Source: aaif-goose/goose (crates/goose-server, crates/goose/src/permission)
+cli: goose
+
+native:
+  - goose: session.start
+    nerv: SessionStart
+    note: SSE session lifecycle
+  - goose: session.end
+    nerv: SessionEnd
+    note: SSE session lifecycle
+  - goose: finish
+    nerv: Stop
+    note: SSE Finish event with reason + token_state
+  - goose: notification
+    nerv: Notification
+    note: SSE Notification (ServerNotification via request_id)
+  - goose: update_conversation
+    nerv: PostCompact
+    note: SSE UpdateConversation with full Conversation object
+  - goose: action_required
+    nerv: PermissionRequest
+    note: ActionRequired route in goose-server
+  - goose: permission_denied
+    nerv: PermissionDenied
+    note: Permission::DenyOnce / AlwaysDeny from permission system
+  - goose: subagent_created
+    nerv: SubagentStart
+    note: summon subagent_created notification
+  - goose: subagent_completed
+    nerv: SubagentStop
+    note: summon completed notification
+  - goose: subagent_terminated
+    nerv: SubagentStop
+    note: summon terminated notification
+  - goose: tasks_complete
+    nerv: TaskCompleted
+    note: TasksComplete notification event
+  - goose: error
+    nerv: StopFailure
+    note: SSE Error event (error string)
+
+close:
+  - goose: request.start
+    nerv: UserPromptSubmit
+    note: SSE request start; approximate — fires per request, not per user prompt
+  - goose: tasks_update
+    nerv: TaskCreated
+    note: TasksUpdate Pending->Running transition in notification
+
+synthesized:
+  - nerv: PreToolUse
+    source: extension
+    pattern: tool.before event from nerv bridge MCP extension
+  - nerv: PostToolUse
+    source: extension
+    pattern: tool.after event from nerv bridge MCP extension
+  - nerv: PostToolUseFailure
+    source: extension
+    pattern: tool.error event from nerv bridge MCP extension
+  - nerv: FileChanged
+    source: extension
+    pattern: developer ext file ops (text_editor, write_file)
+  - nerv: CwdChanged
+    source: shell-match
+    pattern: developer__shell command matches ^cd\b
+  - nerv: WorktreeCreate
+    source: shell-match
+    pattern: developer__shell command matches worktree add|git hop add
+  - nerv: WorktreeRemove
+    source: shell-match
+    pattern: developer__shell command matches worktree remove|git hop remove
+  - nerv: PreCompact
+    source: signal
+    pattern: compaction request from session
+  - nerv: InstructionsLoaded
+    source: extension
+    pattern: skills extension load event
+  - nerv: TaskCreated
+    source: notification
+    pattern: TasksUpdate with Pending->Running status transition
+
+unsupported:
+  - TeammateIdle
+  - ConfigChange
+  - Elicitation
+  - ElicitationResult
+  - BeforeToolSelection
+  - LspDiagnostics
+  - SessionDiff
+  - SessionStatus

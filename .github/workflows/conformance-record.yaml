@@ -1,0 +1,44 @@
+name: Conformance Record (Nightly)
+on:
+  schedule:
+    - cron: '0 6 * * 1'  # Weekly Monday 6am UTC
+  workflow_dispatch:
+
+jobs:
+  record:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        cli: [claude, gemini, codex, opencode]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with: { go-version-file: go.mod }
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with: { node-version: '24.22.1' }
+      - name: Install yq
+        run: |
+          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
+      - name: Install CLI
+        run: |
+          CLI_PKG=$(yq ".matrix.${{ matrix.cli }}.package" versions.yaml)
+          CLI_VER=$(yq ".matrix.${{ matrix.cli }}.versions[-1]" versions.yaml)
+          INSTALL=$(yq ".matrix.${{ matrix.cli }}.install" versions.yaml)
+          if [ "$INSTALL" = "npm" ]; then
+            npm i -g "${CLI_PKG}@${CLI_VER}"
+          else
+            go install "${CLI_PKG}@v${CLI_VER}"
+          fi
+      - name: Build nerv
+        run: go build -buildvcs=false ./...
+      - name: Record cassettes
+        env:
+          NERV_RECORD: "1"
+        run: go test -v -run TestConformance -tags conformance ./adapters/...
+      - name: Commit cassettes
+        uses: stefanzweifel/git-auto-commit-action@4a55954c782fc1ea30b9056cd3e7a2b40ca8887d # v7.2.0
+        with:
+          commit_message: "test(cassettes): record ${{ matrix.cli }} conformance"
+          file_pattern: testdata/cassettes/**

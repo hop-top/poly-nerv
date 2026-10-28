@@ -1,0 +1,80 @@
+FROM node:24.22.1-slim AS base
+
+# Go toolchain for opencode + nerv build
+COPY --from=golang:1.27.3-bookworm /usr/local/go /usr/local/go
+ENV PATH="/usr/local/go/bin:/root/go/bin:${PATH}"
+
+# System deps
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    git jq curl ca-certificates python3 python3-pip && \
+    rm -rf /var/lib/apt/lists/*
+
+# CLI selection
+ARG CLI_NAME
+ARG CLI_VERSION
+ARG CLI_PACKAGE
+ARG CLI_INSTALL_METHOD=npm
+
+# Install the specific CLI version
+RUN if [ "$CLI_INSTALL_METHOD" = "npm" ]; then \
+      npm i -g ${CLI_PACKAGE}@${CLI_VERSION}; \
+    elif [ "$CLI_INSTALL_METHOD" = "go" ]; then \
+      if [ "$CLI_VERSION" = "latest" ]; then \
+        go install ${CLI_PACKAGE}@latest; \
+      else \
+        case "$CLI_VERSION" in v*) ;; *) CLI_VERSION="v${CLI_VERSION}" ;; esac && \
+        go install ${CLI_PACKAGE}@${CLI_VERSION}; \
+      fi; \
+    elif [ "$CLI_INSTALL_METHOD" = "pip" ]; then \
+      pip install --break-system-packages ${CLI_PACKAGE}==${CLI_VERSION} 2>/dev/null || \
+      pip install --break-system-packages ${CLI_PACKAGE} || \
+      { echo "ERROR: Failed to install pip package '${CLI_PACKAGE}'" >&2; exit 1; }; \
+    fi
+
+# Python for aider
+RUN if [ "$CLI_INSTALL_METHOD" = "pip" ]; then \
+      apt-get update && apt-get install -y --no-install-recommends python3 python3-pip && \
+      rm -rf /var/lib/apt/lists/* && \
+      if [ "$CLI_VERSION" = "latest" ]; then \
+        pip3 install --break-system-packages ${CLI_PACKAGE}; \
+      else \
+        pip3 install --break-system-packages ${CLI_PACKAGE}==${CLI_VERSION}; \
+      fi; \
+    fi
+
+# Cargo for goose
+RUN if [ "$CLI_INSTALL_METHOD" = "cargo" ]; then \
+      curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y && \
+      . "$HOME/.cargo/env" && \
+      if [ "$CLI_VERSION" = "latest" ]; then \
+        cargo install ${CLI_PACKAGE}; \
+      else \
+        cargo install ${CLI_PACKAGE} --version ${CLI_VERSION}; \
+      fi; \
+    fi
+ENV PATH="/root/.cargo/bin:${PATH}"
+
+# Codex feature flag
+RUN if [ "$CLI_NAME" = "codex" ]; then \
+      mkdir -p ~/.codex && \
+      echo 'codex_hooks = true' > ~/.codex/config.toml; \
+    fi
+
+# OpenHands config stub
+RUN if [ "$CLI_NAME" = "openhands" ]; then \
+      mkdir -p ~/.openhands && echo '{}' > ~/.openhands/hooks.json; \
+    fi
+
+# Copy nerv source
+COPY . /nerv
+WORKDIR /nerv
+
+# Build nerv binaries
+RUN CGO_ENABLED=0 go build -buildvcs=false -o /usr/local/bin/nerv ./cmd/nerv && \
+    CGO_ENABLED=0 go build -buildvcs=false -o /usr/local/bin/nervd ./cmd/nervd
+
+# Verify CLI is installed
+RUN which ${CLI_NAME} || echo "CLI binary not in PATH (expected for some install methods)"
+
+ENTRYPOINT ["go", "test", "-v", "-count=1", "-tags", "conformance"]
+CMD ["-run", "TestConformance", "./adapters/..."]

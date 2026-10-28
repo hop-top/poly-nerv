@@ -1,0 +1,81 @@
+# Gemini CLI capability map for nerv adapter.
+# Source: docs/research/gemini-cli.md + docs/research/mappings.md
+cli: gemini
+
+native:
+  - gemini: SessionStart
+    nerv: SessionStart
+  - gemini: SessionEnd
+    nerv: SessionEnd
+  - gemini: BeforeTool
+    nerv: PreToolUse
+  - gemini: AfterTool
+    nerv: PostToolUse
+  - gemini: BeforeAgent
+    nerv: SubagentStart
+  - gemini: AfterAgent
+    nerv: SubagentStop
+  - gemini: Notification
+    nerv: Notification
+  - gemini: PreCompress
+    nerv: PreCompact
+  - gemini: BeforeToolSelection
+    nerv: BeforeToolSelection
+
+close:
+  - gemini: BeforeModel
+    nerv: UserPromptSubmit
+    note: fires per model call, not per user prompt
+  - gemini: SessionEnd
+    nerv: Stop
+    note: only fires on graceful exit
+  - gemini: AfterModel
+    nerv: PostCompact
+    note: requires compaction marker detection
+
+synthesized:
+  - nerv: PermissionRequest
+    source: BeforeTool
+    pattern: auto-approve check
+  - nerv: PermissionDenied
+    source: BeforeTool
+    pattern: exit=2
+  - nerv: PostToolUseFailure
+    source: AfterTool
+    pattern: tool_response.error present
+  - nerv: InstructionsLoaded
+    source: AfterTool
+    pattern: tool_name=Read, path matches CLAUDE.md|AGENTS.md|rules/*.md
+  - nerv: ConfigChange
+    source: AfterTool
+    pattern: tool_name=Write, path matches settings.json
+  - nerv: CwdChanged
+    source: AfterTool
+    pattern: tool_name=Bash|Shell, command matches ^cd\b
+  - nerv: FileChanged
+    source: AfterTool
+    pattern: tool_name=Write|Edit
+  - nerv: WorktreeCreate
+    source: AfterTool
+    pattern: tool_name=Bash|Shell, command matches worktree add|git hop add
+  - nerv: WorktreeRemove
+    source: AfterTool
+    pattern: tool_name=Bash|Shell, command matches worktree remove|git hop remove
+  - nerv: TaskCreated
+    source: BeforeTool
+    pattern: tool_name matches TaskCreate|todo_write
+  - nerv: TaskCompleted
+    source: AfterTool
+    pattern: tool_name matches TaskUpdate, status diff → completed
+  - nerv: PostCompact
+    source: AfterModel
+    pattern: compaction marker in llm_response
+  - nerv: Elicitation
+    source: BeforeTool
+    pattern: tool_name matches ^mcp__
+  - nerv: ElicitationResult
+    source: AfterTool
+    pattern: tool_name matches ^mcp__
+
+unsupported:
+  - TeammateIdle

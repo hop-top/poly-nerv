@@ -1,0 +1,14 @@
+go 1.27.3
+
+// Local workspace stitching hop.top/nerv with hop.top/nerv/sdk/go.
+// Build/test resolve cross-module imports via this file; go.work is
+// never seen by external consumers (proxy serves each module
+// independently).
+//
+// sdk/go/go.mod also keeps a local-dev `replace` for hop.top/nerv so
+// GOWORK=off builds work; consumers ignore it and resolve the real
+// require version (see docs/RELEASING.md).
+use (
+	.
+	./sdk/go
+)

@@ -1,0 +1,26 @@
+%% nerv Built-in Registry — unified dispatch flow
+%% Built-ins share CachedConfig.ByEvent with user hooks.
+%% Route: HookEntry.Source == "builtin" → in-process func (no fork).
+
+flowchart TD
+    DaemonInit["Daemon / binary init"] --> LoadCfg["config.Load\n(layered hooks.yaml)"]
+    LoadCfg --> Compile["config.Compile"]
+    Compile --> UserLoop["index user hooks → ByEvent"]
+    UserLoop --> Inject["builtins.Inject\n(synthetic HookEntry per builtin × event)"]
+    Inject --> Cache["CachedConfig ready\nByEvent: user + builtin mixed"]
+
+    subgraph PerEvent ["Runner.RunHooks — per-event loop"]
+        Cache --> Lookup["ByEvent[event]"]
+        Lookup --> ForEach["for each HookEntry (order preserved)"]
+        ForEach --> SrcCheck{"h.Source?"}
+        SrcCheck -->|builtin| EnaCheck{"Builtin[name].Enabled?"}
+        EnaCheck -->|yes| CallFunc["runBuiltin\n→ BuiltinDef.Func(env, runtimeCfg)"]
+        EnaCheck -->|no| SkipAllow["skip → allow\n(visible in hook list; not dispatched)"]
+        SrcCheck -->|user| ForkExec["fork exec\n(existing run.go path — unchanged)"]
+        CallFunc --> Dec["Decision"]
+        SkipAllow --> Dec
+        ForkExec --> Dec
+    end
+
+    Dec --> Merge["merger.Merge(decisions)"]
+    Merge --> Reply["CLI reply"]

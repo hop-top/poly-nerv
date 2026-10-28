@@ -1,0 +1,7 @@
+          
+   ERROR  
+          
+  Unknown command "frobnicate" for "nerv".                                                                            
+
+  Try --help for usage.
+

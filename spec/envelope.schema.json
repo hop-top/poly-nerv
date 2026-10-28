@@ -1,0 +1,167 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://hop.top/nerv/schemas/envelope/1.0-draft",
+  "title": "Nerv Envelope",
+  "description": "Wire format for all nerv hook events. Validation is for lint/conformance only — NOT the hot dispatch path (perf decision). Adapters produce envelopes; handlers consume them.",
+  "type": "object",
+  "required": [
+    "nerv_version",
+    "event",
+    "event_id",
+    "timestamp",
+    "cli",
+    "session",
+    "payload"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "nerv_version": {
+      "type": "string",
+      "description": "Nerv protocol version (semver).",
+      "pattern": "^\\d+\\.\\d+\\.\\d+(-[a-zA-Z0-9.]+)?$",
+      "examples": ["1.0.0-draft", "1.0.0"]
+    },
+    "event": {
+      "type": "string",
+      "description": "Event name from spec/events.yaml.",
+      "enum": [
+        "SessionStart",
+        "SessionEnd",
+        "UserPromptSubmit",
+        "PreToolUse",
+        "PostToolUse",
+        "PostToolUseFailure",
+        "PermissionRequest",
+        "PermissionDenied",
+        "Notification",
+        "SubagentStart",
+        "SubagentStop",
+        "TaskCreated",
+        "TaskCompleted",
+        "Stop",
+        "StopFailure",
+        "TeammateIdle",
+        "InstructionsLoaded",
+        "ConfigChange",
+        "CwdChanged",
+        "FileChanged",
+        "WorktreeCreate",
+        "WorktreeRemove",
+        "PreCompact",
+        "PostCompact",
+        "Elicitation",
+        "ElicitationResult",
+        "BeforeToolSelection",
+        "LspDiagnostics",
+        "SessionDiff",
+        "SessionStatus"
+      ]
+    },
+    "event_id": {
+      "type": "string",
+      "description": "Unique event identifier (UUID v4).",
+      "format": "uuid"
+    },
+    "timestamp": {
+      "type": "string",
+      "description": "Event timestamp (ISO 8601 with timezone).",
+      "format": "date-time"
+    },
+    "cli": {
+      "$ref": "#/definitions/cli_info"
+    },
+    "session": {
+      "$ref": "#/definitions/session_info"
+    },
+    "payload": {
+      "type": "object",
+      "description": "Event-specific payload. Shape varies per event; see spec/events.yaml for field definitions."
+    },
+    "synthesized": {
+      "type": "boolean",
+      "description": "True if this event was synthesized by the adapter rather than natively emitted by the CLI.",
+      "default": false
+    },
+    "synthesis_source": {
+      "type": ["string", "null"],
+      "description": "Technique used to synthesize this event. Null when synthesized=false.",
+      "enum": [
+        null,
+        "matcher",
+        "daemon",
+        "status_diff",
+        "binary_wrap",
+        "mcp_proxy"
+      ]
+    },
+    "capabilities": {
+      "description": "Reference to the adapter's capability map. Null if not applicable.",
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "required": ["cli", "cli_version_range"],
+          "additionalProperties": false,
+          "properties": {
+            "cli": {
+              "type": "string",
+              "description": "CLIName from uxp registry."
+            },
+            "cli_version_range": {
+              "type": "string",
+              "description": "Semver range this capability map covers."
+            }
+          }
+        }
+      ]
+    }
+  },
+  "definitions": {
+    "cli_info": {
+      "type": "object",
+      "description": "Metadata about the CLI that produced this event.",
+      "required": ["name", "version"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "CLI identifier (matches uxp.CLIName).",
+          "examples": [
+            "claude-code",
+            "gemini-cli",
+            "codex-cli",
+            "opencode"
+          ]
+        },
+        "version": {
+          "type": "string",
+          "description": "CLI version (semver)."
+        },
+        "binary_path": {
+          "type": "string",
+          "description": "Absolute path to the CLI binary on disk."
+        }
+      }
+    },
+    "session_info": {
+      "type": "object",
+      "description": "Session context for this event.",
+      "required": ["id"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Session identifier from the CLI."
+        },
+        "project_key": {
+          "type": "string",
+          "description": "Derived project key (from uxp.DeriveKey)."
+        },
+        "cwd": {
+          "type": "string",
+          "description": "Working directory at time of event."
+        }
+      }
+    }
+  }
+}

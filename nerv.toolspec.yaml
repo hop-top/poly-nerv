@@ -1,0 +1,920 @@
+name: nerv
+schema_version: "1"
+
+state_introspection:
+  config_commands:
+    - nerv status
+    - nerv doctor
+    - nerv install status
+    - nerv daemon status
+  env_vars:
+    # Read by the nerv/nervd runtime.
+    - NERV_SOCKET
+    - NERV_MAX_ENVELOPE_SIZE
+    - NERV_RULEPACKS_DIR
+    # Exported by the dispatcher into hook handler processes.
+    - NERV_EVENT
+    - NERV_CLI
+    - NERV_SESSION_ID
+    - NERV_CWD
+    - NERV_HOOK_NAME
+
+commands:
+  - name: add
+    intent:
+      domain: hooks
+      category: operations
+      tags: [hook, install, lockfile]
+    contract:
+      idempotent: false
+      retryable: true
+      side_effects:
+        - downloads or copies the handler from --source
+        - registers the hook under hooks: in .nerv/hooks.yaml
+        - pins resolved artifact + SHA-256 in .nerv/hooks.lock
+    safety:
+      level: caution
+      requires_confirmation: false
+    preview_modes:
+      - --dry-run
+    flags:
+      - name: --source
+        type: string
+        description: URL or local path to hook handler (default hop.top/nerv/hooks/<name>)
+      - name: --dry-run
+        type: bool
+        description: Preview side effects without applying them
+      - name: --confirm
+        type: string
+        description: Confirmation policy for destructive commands (auto|yes|no|prompt)
+      - name: --config
+        short: -c
+        type: string
+        description: Layer extra config (repeatable)
+      - name: --chdir
+        short: -C
+        type: string
+        description: Change directory before running
+    suggested_next:
+      - lint
+      - daemon reload
+
+  - name: create
+    intent:
+      domain: hooks
+      category: operations
+      tags: [hook, llm, codegen]
+    contract:
+      idempotent: false
+      retryable: true
+      side_effects:
+        - invokes an external LLM provider to author the handler
+        - writes the generated handler script to disk (only with --allow-untrusted)
+        - registers the generated hook in .nerv/hooks.yaml
+      pre_conditions:
+        - LLM provider credentials available via env (ANTHROPIC_API_KEY, OPENAI_API_KEY, ...) or llm.yaml
+    safety:
+      level: dangerous
+      requires_confirmation: true
+      permissions:
+        - executes LLM-authored code with the invoking user's privileges
+    preview_modes:
+      - --dry-run
+    flags:
+      - name: --allow-untrusted
+        type: bool
+        description: Commit the LLM-generated handler to disk after auditing the printed script
+      - name: --dry-run
+        type: bool
+        description: Print artifacts without writing them
+      - name: --events
+        type: string
+        description: Override inferred event subscription (comma-separated)
+      - name: --lang
+        type: string
+        description: "Handler language: sh | py (default sh)"
+      - name: --llm-provider
+        type: string
+        description: LLM provider URI (default from $LLM_PROVIDER or llm.yaml)
+      - name: --name
+        type: string
+        description: Override the derived hook name
+      - name: --config
+        short: -c
+        type: string
+        description: Layer extra config (repeatable)
+      - name: --chdir
+        short: -C
+        type: string
+        description: Change directory before running
+    suggested_next:
+      - lint
+      - test
+
+  - name: daemon
+    children:
+      - name: reload
+        intent:
+          domain: daemon
+          category: operations
+          tags: [daemon, lifecycle, reload]
+        contract:
+          idempotent: true
+          retryable: true
+          side_effects:
+            - sends SIGHUP to the running nervd so it re-reads hooks.yaml
+          pre_conditions:
+            - nervd is running
+        safety:
+          level: caution
+          requires_confirmation: false
+        preview_modes:
+          - --dry-run
+        flags:
+          - name: --dry-run
+            type: bool
+            description: Preview side effects without applying them
+          - name: --confirm
+            type: string
+            description: Confirmation policy for destructive commands (auto|yes|no|prompt)
+          - name: --config
+            short: -c
+            type: string
+            description: Layer extra config (repeatable)
+          - name: --chdir
+            short: -C
+            type: string
+            description: Change directory before running
+        suggested_next:
+          - daemon status
+
+      - name: start
+        intent:
+          domain: daemon
+          category: operations
+          tags: [daemon, lifecycle]
+        contract:
+          idempotent: true
+          retryable: true
+          side_effects:
+            - spawns a detached nervd background process
+            - writes the PID to $XDG_STATE_HOME/nerv/daemon.pid
+            - serves hook events on $XDG_RUNTIME_DIR/nerv.sock
+        safety:
+          level: caution
+          requires_confirmation: false
+        flags:
+          - name: --config
+            short: -c
+            type: string
+            description: Layer extra config (repeatable)
+          - name: --chdir
+            short: -C
+            type: string
+            description: Change directory before running
+        suggested_next:
+          - daemon status
+          - tail
+
+      - name: status
+        intent:
+          domain: daemon
+          category: query
+          tags: [daemon, monitoring]
+        contract:
+          idempotent: true
+          retryable: true
+        safety:
+          level: safe
+        output_schema:
+          format: text
+          example: stopped
+        flags:
+          - name: --config
+            short: -c
+            type: string
+            description: Layer extra config (repeatable)
+          - name: --chdir
+            short: -C
+            type: string
+            description: Change directory before running
+        suggested_next:
+          - daemon start
+          - status
+
+      - name: stop
+        intent:
+          domain: daemon
+          category: operations
+          tags: [daemon, lifecycle]
+        contract:
+          idempotent: true
+          retryable: true
+          side_effects:
+            - sends SIGTERM (then SIGKILL after 5s) to the running nervd
+            - removes the pidfile and unix socket
+        safety:
+          level: dangerous
+          requires_confirmation: true
+        preview_modes:
+          - --dry-run
+        flags:
+          - name: --dry-run
+            type: bool
+            description: Preview side effects without applying them
+          - name: --confirm
+            type: string
+            description: Confirmation policy for destructive commands (auto|yes|no|prompt)
+          - name: --config
+            short: -c
+            type: string
+            description: Layer extra config (repeatable)
+          - name: --chdir
+            short: -C
+            type: string
+            description: Change directory before running
+        suggested_next:
+          - daemon status
+
+  - name: disable
+    children:
+      - name: hooks
+        intent:
+          domain: hooks
+          category: configuration
+          tags: [hook, toggle]
+        contract:
+          idempotent: true
+          retryable: true
+          side_effects:
+            - sets disabled: true on matching hook entries in .nerv/hooks.yaml
+        safety:
+          level: caution
+          requires_confirmation: true
+        preview_modes:
+          - --dry-run
+        flags:
+          - name: --idempotency-key
+            type: string
+            description: Idempotency key for replay
+          - name: --no-confirm
+            type: bool
+            description: Skip the interactive y/N prompt; required for non-TTY use
+          - name: --dry-run
+            type: bool
+            description: Preview side effects without applying them
+          - name: --confirm
+            type: string
+            description: Confirmation policy for destructive commands (auto|yes|no|prompt)
+          - name: --config
+            short: -c
+            type: string
+            description: Layer extra config (repeatable)
+          - name: --chdir
+            short: -C
+            type: string
+            description: Change directory before running
+        suggested_next:
+          - enable hooks
+          - daemon reload
+
+      - name: events
+        intent:
+          domain: hooks
+          category: configuration
+          tags: [event, toggle]
+        contract:
+          idempotent: true
+          retryable: true
+          side_effects:
+            - appends event names to the events: list in .nerv/disabled.yaml
+            - creates .nerv/disabled.yaml when absent
+        safety:
+          level: caution
+          requires_confirmation: true
+        preview_modes:
+          - --dry-run
+        flags:
+          - name: --idempotency-key
+            type: string
+            description: Idempotency key for replay
+          - name: --no-confirm
+            type: bool
+            description: Skip the interactive y/N prompt; required for non-TTY use
+          - name: --dry-run
+            type: bool
+            description: Preview side effects without applying them
+          - name: --confirm
+            type: string
+            description: Confirmation policy for destructive commands (auto|yes|no|prompt)
+          - name: --config
+            short: -c
+            type: string
+            description: Layer extra config (repeatable)
+          - name: --chdir
+            short: -C
+            type: string
+            description: Change directory before running
+        suggested_next:
+          - enable events
+
+      - name: bindings
+        intent:
+          domain: hooks
+          category: configuration
+          tags: [binding, toggle]
+        contract:
+          idempotent: true
+          retryable: true
+          side_effects:
+            - appends <hook>:<event> pairs to the bindings: list in .nerv/disabled.yaml
+        safety:
+          level: caution
+          requires_confirmation: true
+        preview_modes:
+          - --dry-run
+        flags:
+          - name: --idempotency-key
+            type: string
+            description: Idempotency key for replay
+          - name: --no-confirm
+            type: bool
+            description: Skip the interactive y/N prompt; required for non-TTY use
+          - name: --dry-run
+            type: bool
+            description: Preview side effects without applying them
+          - name: --confirm
+            type: string
+            description: Confirmation policy for destructive commands (auto|yes|no|prompt)
+          - name: --config
+            short: -c
+            type: string
+            description: Layer extra config (repeatable)
+          - name: --chdir
+            short: -C
+            type: string
+            description: Change directory before running
+        suggested_next:
+          - enable bindings
+
+  - name: doctor
+    intent:
+      domain: diagnostics
+      category: query
+      tags: [health, probe, ci]
+    contract:
+      idempotent: true
+      retryable: true
+    safety:
+      level: safe
+    output_schema:
+      format: table
+      fields:
+        - Check
+        - Status
+        - Message
+    flags:
+      - name: --config
+        short: -c
+        type: string
+        description: Layer extra config (repeatable)
+      - name: --chdir
+        short: -C
+        type: string
+        description: Change directory before running
+    suggested_next:
+      - status
+      - install status
+
+  - name: enable
+    children:
+      - name: hooks
+        intent:
+          domain: hooks
+          category: configuration
+          tags: [hook, toggle]
+        contract:
+          idempotent: true
+          retryable: true
+          side_effects:
+            - strips the disabled: field from matching hook entries in .nerv/hooks.yaml
+        safety:
+          level: caution
+          requires_confirmation: true
+        preview_modes:
+          - --dry-run
+        flags:
+          - name: --idempotency-key
+            type: string
+            description: Idempotency key for replay
+          - name: --no-confirm
+            type: bool
+            description: Skip the interactive y/N prompt; required for non-TTY use
+          - name: --dry-run
+            type: bool
+            description: Preview side effects without applying them
+          - name: --confirm
+            type: string
+            description: Confirmation policy for destructive commands (auto|yes|no|prompt)
+          - name: --config
+            short: -c
+            type: string
+            description: Layer extra config (repeatable)
+          - name: --chdir
+            short: -C
+            type: string
+            description: Change directory before running
+        suggested_next:
+          - disable hooks
+          - daemon reload
+
+      - name: events
+        intent:
+          domain: hooks
+          category: configuration
+          tags: [event, toggle]
+        contract:
+          idempotent: true
+          retryable: true
+          side_effects:
+            - removes event names from the events: list in .nerv/disabled.yaml
+        safety:
+          level: caution
+          requires_confirmation: true
+        preview_modes:
+          - --dry-run
+        flags:
+          - name: --idempotency-key
+            type: string
+            description: Idempotency key for replay
+          - name: --no-confirm
+            type: bool
+            description: Skip the interactive y/N prompt; required for non-TTY use
+          - name: --dry-run
+            type: bool
+            description: Preview side effects without applying them
+          - name: --confirm
+            type: string
+            description: Confirmation policy for destructive commands (auto|yes|no|prompt)
+          - name: --config
+            short: -c
+            type: string
+            description: Layer extra config (repeatable)
+          - name: --chdir
+            short: -C
+            type: string
+            description: Change directory before running
+        suggested_next:
+          - disable events
+
+      - name: bindings
+        intent:
+          domain: hooks
+          category: configuration
+          tags: [binding, toggle]
+        contract:
+          idempotent: true
+          retryable: true
+          side_effects:
+            - removes <hook>:<event> pairs from the bindings: list in .nerv/disabled.yaml
+        safety:
+          level: caution
+          requires_confirmation: true
+        preview_modes:
+          - --dry-run
+        flags:
+          - name: --idempotency-key
+            type: string
+            description: Idempotency key for replay
+          - name: --no-confirm
+            type: bool
+            description: Skip the interactive y/N prompt; required for non-TTY use
+          - name: --dry-run
+            type: bool
+            description: Preview side effects without applying them
+          - name: --confirm
+            type: string
+            description: Confirmation policy for destructive commands (auto|yes|no|prompt)
+          - name: --config
+            short: -c
+            type: string
+            description: Layer extra config (repeatable)
+          - name: --chdir
+            short: -C
+            type: string
+            description: Change directory before running
+        suggested_next:
+          - disable bindings
+
+  - name: inbox
+    children:
+      - name: list
+        intent:
+          domain: inbox
+          category: query
+          tags: [inbox, crtx, routing]
+        contract:
+          idempotent: true
+          retryable: true
+        safety:
+          level: safe
+        output_schema:
+          format: table
+          example: "Message  Received  From  Role  Preview"
+        flags:
+          - name: --config
+            short: -c
+            type: string
+            description: Layer extra config (repeatable)
+          - name: --chdir
+            short: -C
+            type: string
+            description: Change directory before running
+        suggested_next:
+          - inbox show
+
+      - name: show
+        intent:
+          domain: inbox
+          category: query
+          tags: [inbox, crtx, routing]
+        contract:
+          idempotent: true
+          retryable: true
+        safety:
+          level: safe
+        output_schema:
+          format: json
+          example: '{"msg_id": "m…", "envelope_id": "…", "content": […]}'
+        flags:
+          - name: --config
+            short: -c
+            type: string
+            description: Layer extra config (repeatable)
+          - name: --chdir
+            short: -C
+            type: string
+            description: Change directory before running
+        suggested_next:
+          - inbox list
+
+  - name: install
+    children:
+      - name: add
+        intent:
+          domain: adapters
+          category: operations
+          tags: [adapter, install, setup]
+        contract:
+          idempotent: true
+          retryable: true
+          side_effects:
+            - merges nerv hook config into the target AI CLI's native settings
+            - backs up the existing config and writes atomically
+            - records the install in the journal under the nerv state dir
+        safety:
+          level: caution
+          requires_confirmation: false
+        preview_modes:
+          - --dry-run
+        flags:
+          - name: --dry-run
+            type: bool
+            description: Preview the merge without writing config or journaling
+          - name: --confirm
+            type: string
+            description: Confirmation policy for destructive commands (auto|yes|no|prompt)
+          - name: --config
+            short: -c
+            type: string
+            description: Layer extra config (repeatable)
+          - name: --chdir
+            short: -C
+            type: string
+            description: Change directory before running
+        suggested_next:
+          - install status
+          - doctor
+
+      - name: status
+        intent:
+          domain: adapters
+          category: query
+          tags: [adapter, monitoring, drift]
+        contract:
+          idempotent: true
+          retryable: true
+        safety:
+          level: safe
+        output_schema:
+          format: table
+          fields:
+            - CLI
+            - Installed
+            - Version
+            - Nerv Adapter
+            - Drift
+            - Last Install
+        flags:
+          - name: --config
+            short: -c
+            type: string
+            description: Layer extra config (repeatable)
+          - name: --chdir
+            short: -C
+            type: string
+            description: Change directory before running
+        suggested_next:
+          - install add
+          - doctor
+
+  - name: lint
+    intent:
+      domain: hooks
+      category: query
+      tags: [validation, hooks-yaml, ci]
+    contract:
+      idempotent: true
+      retryable: true
+      side_effects:
+        - executes each handler once with an empty envelope on stdin to probe responsiveness
+    safety:
+      level: safe
+    output_schema:
+      format: text
+      example: No issues found.
+    flags:
+      - name: --config
+        short: -c
+        type: string
+        description: Layer extra config (repeatable)
+      - name: --chdir
+        short: -C
+        type: string
+        description: Change directory before running
+    suggested_next:
+      - test
+      - daemon reload
+
+  - name: remove
+    intent:
+      domain: hooks
+      category: operations
+      tags: [hook, uninstall, lockfile]
+    contract:
+      idempotent: true
+      retryable: true
+      side_effects:
+        - strips the hook entry from .nerv/hooks.yaml and .nerv/hooks.lock
+        - deletes the handler directory under $XDG_DATA_HOME/nerv/hooks/<name> when --purge is set
+    safety:
+      level: dangerous
+      requires_confirmation: true
+    preview_modes:
+      - --dry-run
+    flags:
+      - name: --purge
+        type: bool
+        description: Also delete handler files from disk
+      - name: --dry-run
+        type: bool
+        description: Preview side effects without applying them
+      - name: --confirm
+        type: string
+        description: Confirmation policy for destructive commands (auto|yes|no|prompt)
+      - name: --config
+        short: -c
+        type: string
+        description: Layer extra config (repeatable)
+      - name: --chdir
+        short: -C
+        type: string
+        description: Change directory before running
+    suggested_next:
+      - lint
+      - daemon reload
+
+  - name: replay
+    intent:
+      domain: events
+      category: operations
+      tags: [event, replay, drift]
+    contract:
+      idempotent: false
+      retryable: true
+      side_effects:
+        - re-emits recorded events through the current dispatch config, re-running hook handlers
+    safety:
+      level: caution
+      requires_confirmation: false
+    output_schema:
+      format: table
+    flags:
+      - name: --last
+        type: int
+        description: Replay last N events
+      - name: --config
+        short: -c
+        type: string
+        description: Layer extra config (repeatable)
+      - name: --chdir
+        short: -C
+        type: string
+        description: Change directory before running
+    suggested_next:
+      - tail
+      - lint
+
+  - name: status
+    intent:
+      domain: diagnostics
+      category: query
+      tags: [overview, monitoring]
+    contract:
+      idempotent: true
+      retryable: true
+    safety:
+      level: safe
+    output_schema:
+      format: table
+      fields:
+        - nerv version
+        - adapters
+        - hooks
+        - active events
+        - daemon
+        - event log
+    flags:
+      - name: --config
+        short: -c
+        type: string
+        description: Layer extra config (repeatable)
+      - name: --chdir
+        short: -C
+        type: string
+        description: Change directory before running
+    suggested_next:
+      - doctor
+      - daemon status
+
+  - name: tail
+    intent:
+      domain: events
+      category: query
+      tags: [event, stream, observability]
+    contract:
+      idempotent: true
+      retryable: true
+    safety:
+      level: safe
+    output_schema:
+      format: text
+    flags:
+      - name: --cli
+        type: string
+        description: Filter by CLI name
+      - name: --event
+        type: string
+        description: Filter by event name
+      - name: --last
+        type: int
+        description: Number of recent entries to show initially (default 20)
+      - name: --slow
+        type: bool
+        description: Only show events where handler took >100ms
+      - name: --config
+        short: -c
+        type: string
+        description: Layer extra config (repeatable)
+      - name: --chdir
+        short: -C
+        type: string
+        description: Change directory before running
+    suggested_next:
+      - replay
+      - doctor
+
+  - name: test
+    intent:
+      domain: hooks
+      category: query
+      tags: [hook, synthetic, validation]
+    contract:
+      idempotent: true
+      retryable: true
+      side_effects:
+        - executes hook handlers against synthetic envelopes
+    safety:
+      level: caution
+      requires_confirmation: false
+    output_schema:
+      format: table
+    flags:
+      - name: --all
+        type: bool
+        description: Run all hooks with sample envelopes
+      - name: --command
+        type: string
+        description: Command string for payload
+      - name: --event
+        type: string
+        description: Event name to test (e.g. PreToolUse)
+      - name: --tool
+        type: string
+        description: Tool name for payload
+      - name: --config
+        short: -c
+        type: string
+        description: Layer extra config (repeatable)
+      - name: --chdir
+        short: -C
+        type: string
+        description: Change directory before running
+    suggested_next:
+      - lint
+      - daemon reload
+
+  - name: upgrade
+    intent:
+      domain: maintenance
+      category: operations
+      tags: [upgrade, version]
+    contract:
+      idempotent: true
+      retryable: true
+    safety:
+      level: safe
+    preview_modes:
+      - --dry-run
+    flags:
+      - name: --dry-run
+        type: bool
+        description: Preview side effects without applying them
+      - name: --confirm
+        type: string
+        description: Confirmation policy for destructive commands (auto|yes|no|prompt)
+      - name: --config
+        short: -c
+        type: string
+        description: Layer extra config (repeatable)
+      - name: --chdir
+        short: -C
+        type: string
+        description: Change directory before running
+    suggested_next:
+      - status
+      - doctor
+
+  - name: completion
+    intent:
+      domain: shell
+      category: management
+      tags: [completion, shell]
+    contract:
+      idempotent: true
+      retryable: true
+    safety:
+      level: safe
+    output_schema:
+      format: text
+    children:
+      - name: bash
+        intent:
+          domain: shell
+          category: management
+          tags: [completion]
+        contract:
+          idempotent: true
+          retryable: true
+        safety:
+          level: safe
+      - name: zsh
+        intent:
+          domain: shell
+          category: management
+          tags: [completion]
+        contract:
+          idempotent: true
+          retryable: true
+        safety:
+          level: safe
+      - name: fish
+        intent:
+          domain: shell
+          category: management
+          tags: [completion]
+        contract:
+          idempotent: true
+          retryable: true
+        safety:
+          level: safe
+      - name: powershell
+        intent:
+          domain: shell
+          category: management
+          tags: [completion]
+        contract:
+          idempotent: true
+          retryable: true
+        safety:
+          level: safe

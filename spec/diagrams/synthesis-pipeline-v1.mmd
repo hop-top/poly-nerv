@@ -1,0 +1,54 @@
+%% Nerv Synthesis Pipeline
+%%
+%% Raw CLI events transformed into nerv envelopes via 5 techniques.
+%% Not all CLIs need all techniques — depends on native coverage.
+
+flowchart TB
+    Raw[Raw CLI Event] --> Route{Which technique?}
+
+    Route -->|A| Matcher[Matcher Decode]
+    Route -->|B| Daemon[Background Daemon]
+    Route -->|C| Diff[Status Diff]
+    Route -->|D| Wrap[Binary Wrap]
+    Route -->|E| MCP[MCP Proxy]
+
+    Matcher --> Synth[Synthetic Nerv Event]
+    Daemon --> Synth
+    Diff --> Synth
+    Wrap --> Synth
+    MCP --> Synth
+
+    Synth --> Env[Nerv Envelope]
+
+    subgraph "A — Matcher Decode"
+        A1[Hook broad tool event]
+        A2[Filter by tool name + arg regex]
+        A1 --> A2
+    end
+
+    subgraph "B — Background Daemon"
+        B1[Spawn fswatch/inotifywait on SessionStart]
+        B2[Pipe FS events via named pipe]
+        B1 --> B2
+    end
+
+    subgraph "C — Status Diff"
+        C1[Snapshot state at tool.pre]
+        C2[Compare at tool.post]
+        C3[Emit delta as synthetic event]
+        C1 --> C2 --> C3
+    end
+
+    subgraph "D — Binary Wrap"
+        D1[Shim replaces CLI entry point]
+        D2[Tee stdout/stderr]
+        D3[Parse stream for markers]
+        D1 --> D2 --> D3
+    end
+
+    subgraph "E — MCP Proxy"
+        E1[Insert proxy between CLI and MCP server]
+        E2[Forward JSON-RPC traffic]
+        E3[Emit tool.pre/post + elicitation events]
+        E1 --> E2 --> E3
+    end

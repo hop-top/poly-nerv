@@ -1,0 +1,21 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/hop-top/kit/main/contracts/story-schema.json
+schema_version: "1"
+story_id: nerv.test.synthetic-destructive-envelope
+title: Fire a synthetic destructive envelope at the hook pipeline
+binary: nerv
+intent: |
+  A developer relying on guardrails to stop obvious footguns wants to
+  confirm that a destructive Bash invocation is caught before an agent
+  ever runs it. They use nerv test to push a synthetic PreToolUse
+  envelope carrying a destructive command through the hook handlers and
+  read back the decision each handler returned.
+preconditions:
+  - hooks are configured for the PreToolUse event
+steps:
+  - id: destructive_probe
+    intent: |
+      Send a synthetic PreToolUse envelope for a destructive rm command
+      through the hook handlers. The developer reads the returned
+      decision to confirm the command is refused rather than allowed.
+    invoke: ["nerv", "test", "--event", "PreToolUse", "--tool", "Bash", "--command", "rm -rf $HOME"]
+    capture: [exit_code, stdout, stderr]

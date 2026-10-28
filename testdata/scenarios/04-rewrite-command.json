@@ -1,0 +1,28 @@
+{
+  "name": "rewrite-command",
+  "description": "Rewrite rm to trash via PreToolUse hook",
+  "hooks": {
+    "version": "1.0-draft",
+    "hooks": [
+      {
+        "name": "rewrite-rm",
+        "on": "PreToolUse",
+        "match": "Bash|shell",
+        "run": "./testdata/handlers/rewrite-command.sh"
+      }
+    ]
+  },
+  "envelope": {
+    "event": "PreToolUse",
+    "cli": {"name": "claude", "version": "1.0.0"},
+    "session": {"id": "test-rewrite"},
+    "payload": {
+      "tool_name": "Bash",
+      "tool_input": {"command": "rm foo.txt"}
+    }
+  },
+  "expected": {
+    "action": "rewrite",
+    "rewrite": {"command": "trash foo.txt"}
+  }
+}

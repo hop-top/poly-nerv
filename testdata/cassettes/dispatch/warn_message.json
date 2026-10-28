@@ -1,0 +1,17 @@
+{
+  "name": "warn_message",
+  "description": "Hook returns warn with advisory message",
+  "input": {
+    "event": "PreToolUse",
+    "cli": {"name": "claude", "version": "1.0.0"},
+    "session": {"id": "test-789"},
+    "payload": {
+      "tool": "bash",
+      "input": {"command": "chmod 777 ."}
+    }
+  },
+  "expected": {
+    "action": "warn",
+    "message": "broad permissions detected"
+  }
+}

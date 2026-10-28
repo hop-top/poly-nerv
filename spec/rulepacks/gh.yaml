@@ -1,0 +1,23 @@
+# Rule pack: gh (GitHub CLI)
+# Schema: rulepack.schema.json
+#
+# Block bypasses of branch protection / review policy via gh.
+
+name: gh
+version: 1
+description: Block gh-based bypasses of repo policy.
+applies_to:
+  tool: Bash
+
+rules:
+  - id: gh-merge-admin
+    description: gh pr merge --admin bypasses branch protection
+    severity: high
+    pattern: '\bgh\b\s+pr\s+merge\b[^|;]*--admin'
+    default_mode: block
+    reason: |
+      'gh pr merge --admin' uses the actor's admin permissions to
+      override branch protection rules (required reviews, required
+      checks). If a PR cannot merge through normal channels, the
+      protection is doing its job — investigate why instead of
+      bypassing it.

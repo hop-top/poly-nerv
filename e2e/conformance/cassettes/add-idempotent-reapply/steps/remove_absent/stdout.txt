@@ -1,0 +1,4 @@
+{
+  "hook": "ghost-hook",
+  "action": "removed"
+}

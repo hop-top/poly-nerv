@@ -1,0 +1,39 @@
+%% nerv init wizard execution flow
+%%
+%% Entry: nerv init
+%% Idempotence: wizard-state.yaml tracks seen builtin IDs.
+%% CI path: auto-apply defaults when stdin is not a TTY.
+
+flowchart TD
+    Entry["nerv init"] --> LoadRegistry[load BuiltinRegistry\nspec/builtins.yaml]
+    LoadRegistry --> DetectCLIs[detect installed CLIs\nadapters.Registry + Detect]
+    DetectCLIs --> LoadState[load wizard-state.yaml\n~/.config/nerv/]
+
+    LoadState --> CheckTTY{stdin is TTY?}
+    CheckTTY -->|no — CI/pipe\nor --yes flag| CIMode[apply defaults for\nunseen builtins]
+    CIMode --> WriteConfig
+
+    CheckTTY -->|yes — interactive| DiffBuiltins{unseen builtins\nafter filter?}
+
+    DiffBuiltins -->|none| UpToDate["print 'up to date'\nexit 0"]
+    DiffBuiltins -->|some| PromptLoop
+
+    subgraph PromptLoop["per-builtin prompt loop"]
+        direction TB
+        Filter[skip if requires_cli\nnot in detectedCLIs]
+        Filter --> ShowPrompt["description\nrisk_level · default\nEvents list"]
+        ShowPrompt --> Input{y / n / skip / q}
+        Input -->|y or n| Record[record choice]
+        Input -->|skip| Defer[defer to next run]
+        Input -->|q| Abort[abort — no writes]
+        Record --> Next{more?}
+        Defer --> Next
+        Next -->|yes| Filter
+        Next -->|no| WriteConfig
+    end
+
+    WriteConfig[append enabled HookEntry records\n~/.config/nerv/hooks.yaml\nvia config merge pipeline]
+    WriteConfig --> UpdateState[update wizard-state.yaml\nadd seen IDs + timestamp]
+    UpdateState --> Summary["print summary table\nhint: nerv doctor"]
+
+    Abort --> ExitClean[exit 0 — no writes]

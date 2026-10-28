@@ -1,0 +1,19 @@
+# Last 3 minor versions per CLI. Update when new minors ship.
+# Used by CI conformance matrix + docker-compose.test.yaml.
+matrix:
+  claude:
+    package: "@anthropic-ai/claude-code"
+    install: npm
+    versions: ["1.0.18", "1.1.4", "1.2.1"]
+  gemini:
+    package: "@google/gemini-cli"
+    install: npm
+    versions: ["0.3.2", "0.4.1", "0.5.0"]
+  codex:
+    package: "@openai/codex"
+    install: npm
+    versions: ["0.40.0", "0.41.0", "0.42.0"]
+  opencode:
+    package: "github.com/sst/opencode"
+    install: go
+    versions: ["0.3.0", "0.4.0", "0.5.0"]

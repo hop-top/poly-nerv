@@ -1,0 +1,140 @@
+{
+  "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
+  "separate-pull-requests": true,
+  "pull-request-title-pattern": "chore(release):${component} ${version}",
+  "include-component-in-tag": true,
+  "tag-separator": "/",
+  "label": "status:release-pending",
+  "release-label": "status:release-tagged",
+  "changelog-sections": [
+    {
+      "type": "feat",
+      "section": "Features"
+    },
+    {
+      "type": "fix",
+      "section": "Bug Fixes"
+    },
+    {
+      "type": "perf",
+      "section": "Performance"
+    },
+    {
+      "type": "refactor",
+      "section": "Refactoring",
+      "hidden": true
+    },
+    {
+      "type": "chore",
+      "section": "Miscellaneous",
+      "hidden": true
+    },
+    {
+      "type": "docs",
+      "section": "Documentation",
+      "hidden": true
+    },
+    {
+      "type": "test",
+      "section": "Tests",
+      "hidden": true
+    },
+    {
+      "type": "ci",
+      "section": "CI",
+      "hidden": true
+    },
+    {
+      "type": "build",
+      "section": "Build",
+      "hidden": true
+    }
+  ],
+  "linked-versions": [
+    {
+      "group": "nerv",
+      "components": ["nerv", "nerv-go", "nerv-ts", "nerv-py", "nerv-rs", "nerv-php"]
+    }
+  ],
+  "packages": {
+    ".": {
+      "release-type": "go",
+      "component": "nerv",
+      "changelog-path": "CHANGELOG.md",
+      "bump-minor-pre-major": true,
+      "exclude-paths": [
+        "sdk/go",
+        "sdk/ts",
+        "sdk/py",
+        "sdk/rs",
+        "sdk/php"
+      ],
+      "prerelease": true,
+      "prerelease-type": "alpha.0",
+      "versioning": "prerelease",
+      "initial-version": "0.1.0-alpha.0"
+    },
+    "sdk/go": {
+      "release-type": "go",
+      "component": "nerv-go",
+      "changelog-path": "CHANGELOG.md",
+      "extra-files": ["go.mod"],
+      "bump-minor-pre-major": true,
+      "prerelease": true,
+      "prerelease-type": "alpha.0",
+      "versioning": "prerelease",
+      "initial-version": "0.1.0-alpha.0"
+    },
+    "sdk/ts": {
+      "release-type": "node",
+      "component": "nerv-ts",
+      "package-name": "@hop-top/nerv",
+      "changelog-path": "CHANGELOG.md",
+      "bump-minor-pre-major": true,
+      "prerelease": true,
+      "prerelease-type": "alpha.0",
+      "versioning": "prerelease",
+      "initial-version": "0.1.0-alpha.0"
+    },
+    "sdk/py": {
+      "release-type": "python",
+      "component": "nerv-py",
+      "package-name": "nerv-sdk",
+      "changelog-path": "CHANGELOG.md",
+      "bump-minor-pre-major": true,
+      "extra-files": [
+        {
+          "type": "toml",
+          "path": "pyproject.toml",
+          "jsonpath": "$.project.version"
+        }
+      ],
+      "prerelease": true,
+      "prerelease-type": "alpha.0",
+      "versioning": "prerelease",
+      "initial-version": "0.1.0-alpha.0"
+    },
+    "sdk/rs": {
+      "release-type": "rust",
+      "component": "nerv-rs",
+      "package-name": "hop-top-nerv",
+      "changelog-path": "CHANGELOG.md",
+      "bump-minor-pre-major": true,
+      "prerelease": true,
+      "prerelease-type": "alpha.0",
+      "versioning": "prerelease",
+      "initial-version": "0.1.0-alpha.0"
+    },
+    "sdk/php": {
+      "release-type": "php",
+      "component": "nerv-php",
+      "package-name": "hop-top/nerv",
+      "changelog-path": "CHANGELOG.md",
+      "bump-minor-pre-major": true,
+      "prerelease": true,
+      "prerelease-type": "alpha.0",
+      "versioning": "prerelease",
+      "initial-version": "0.1.0-alpha.0"
+    }
+  }
+}

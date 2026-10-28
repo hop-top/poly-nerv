@@ -1,0 +1,85 @@
+# Nerv built-ins registry — wizard-readable form.
+#
+# Source of truth for `nerv init` (the wizard): one entry per built-in
+# hook, with the prompt text, default, risk level, event bindings, and
+# CLI-requirement filter shown to the user. The daemon does NOT read
+# this file — built-ins dispatch in-process via the registry in
+# internal/hookpkg/builtins/registry.go (per wizard-onboarding ADR §6 and
+# builtins-registry ADR Decision 1). Wizard writes only `enabled: true|false` per built-in
+# to the user config layer (~/.config/nerv/hooks.yaml).
+#
+# Sync rule (wizard-onboarding ADR OQ3 resolution): every entry's `id` MUST match
+# a registered `builtins.All.Name` in the in-process registry. Wizard
+# startup calls `builtins.Validate(yamlRegistry)` and aborts loudly on
+# mismatch.
+#
+# Field semantics:
+#   id              unique slug; matches builtins.All.Name
+#   description     one-line summary used as wizard header / list item
+#   prompt          multi-line text shown on the prompt screen
+#   default_enabled wizard pre-selects Enable when true
+#   risk_level      low | medium | high (drives lipgloss color)
+#                     low    = read-only, never blocks, no network
+#                     medium = may warn or rewrite; local side effects
+#                     high   = can block events or make network calls
+#   events          Nerv event names (see spec/events.yaml). Used for
+#                     adapter-capability filtering.
+#   requires_cli    CLI ids (see adapters/). Empty = all CLIs (no
+#                     filter). Non-empty = wizard prompts only when
+#                     adapters.Detect() reports an intersecting CLI.
+#
+# `hook_template` is intentionally absent: built-ins dispatch in-process
+# (wizard-onboarding ADR OQ2 resolution), so there is no exec handler path or
+# template to render. For future user-installable hooks, the existing
+# `nerv add <id>` path applies — that is not the wizard's concern.
+#
+# Schema version "1" pairs with spec/builtins.schema.json. Bump both
+# in lockstep when the entry shape changes; provide a migration in
+# the wizard loader.
+
+version: "1"
+
+builtins:
+  - id: open-questions
+    description: surface unresolved questions from sessions
+    prompt: |
+      open-questions — surface unresolved questions
+
+      Intercepts Stop events; scans response for open question
+      patterns; surfaces matches as a post-session summary.
+
+      Events:     Stop (blocking, read-only)
+      Risk:       low
+      Default:    enabled
+      Requires:   any CLI
+    default_enabled: true
+    risk_level: low
+    events:
+      - Stop
+    requires_cli: []
+
+  - id: guardrails
+    description: block / rewrite dangerous tool calls
+    prompt: |
+      guardrails — block dangerous shell invocations
+
+      Evaluates PreToolUse events (Bash) against declarative rule
+      packs in spec/rulepacks/. Default-on; blocks the obvious
+      footguns (rm -rf $HOME, git push --force to main, curl|sh,
+      sudo shutdown). Some rules rewrite to a safer variant
+      (--force → --force-with-lease) instead of blocking.
+      Destructive ops capture a backup archive in
+      $NERV_STATE_DIR/backups/ before exec; daemon-upgrade triggers
+      a 3-phase GC (TTL + per-project count + total size).
+
+      Events:     PreToolUse (blocking)
+      Risk:       high (can block tool calls)
+      Default:    enabled (opt out per-rule via hooks.yaml)
+      Requires:   any CLI
+
+      See: docs/architecture/guardrails-builtin.md
+    default_enabled: true
+    risk_level: high
+    events:
+      - PreToolUse
+    requires_cli: []

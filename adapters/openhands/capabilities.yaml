@@ -1,0 +1,72 @@
+# OpenHands capability map for nerv adapter.
+# Source: OpenHands/software-agent-sdk PR #1467 (Claude Code-compatible hooks)
+cli: openhands
+
+native:
+  - openhands: PreToolUse
+    nerv: PreToolUse
+  - openhands: PostToolUse
+    nerv: PostToolUse
+  - openhands: UserPromptSubmit
+    nerv: UserPromptSubmit
+  - openhands: SessionStart
+    nerv: SessionStart
+  - openhands: SessionEnd
+    nerv: SessionEnd
+
+close:
+  - openhands: Stop
+    nerv: Stop
+    note: API-ready, needs core loop change
+
+synthesized:
+  - nerv: SubagentStart
+    source: AgentDelegateAction
+    pattern: internal event stream
+  - nerv: SubagentStop
+    source: AgentDelegateObservation
+    pattern: internal event stream
+  - nerv: TaskCreated
+    source: TaskTrackingAction
+    pattern: internal event stream
+  - nerv: TaskCompleted
+    source: TaskTrackingObservation
+    pattern: internal event stream
+  - nerv: FileChanged
+    source: FileWrite/EditObservation
+    pattern: internal event stream
+  - nerv: CwdChanged
+    source: CmdRunAction
+    pattern: command matches ^cd\b
+  - nerv: PreCompact
+    source: CondensationAction
+    pattern: internal event stream
+  - nerv: PostCompact
+    source: CondensationObservation
+    pattern: internal event stream
+  - nerv: Elicitation
+    source: MCPAction
+    pattern: internal event stream
+  - nerv: ElicitationResult
+    source: MCPObservation
+    pattern: internal event stream
+  - nerv: PostToolUseFailure
+    source: ErrorObservation
+    pattern: internal event stream
+  - nerv: InstructionsLoaded
+    source: RecallObservation
+    pattern: internal event stream
+  - nerv: PermissionDenied
+    source: UserRejectObservation
+    pattern: internal event stream
+  - nerv: StopFailure
+    source: ErrorObservation
+    pattern: error during stop
+
+unsupported:
+  - TeammateIdle
+  - Notification
+  - ConfigChange
+  - WorktreeCreate
+  - WorktreeRemove
+  - BeforeToolSelection

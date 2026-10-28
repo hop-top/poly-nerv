@@ -1,0 +1,21 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/hop-top/kit/main/contracts/story-schema.json
+schema_version: "1"
+story_id: nerv.tail.find-slow-handlers
+title: Find hook handlers that are slowing the event loop
+binary: nerv
+intent: |
+  An operator noticing sluggish agent turns suspects one hook handler is
+  dominating the event loop. They run nerv tail with the slow filter so
+  only entries whose handler exceeded the latency threshold are printed,
+  which narrows the investigation to a single hook without reading the
+  entire event log.
+preconditions:
+  - the nerv event log contains at least one recorded entry
+steps:
+  - id: slow_only
+    intent: |
+      Print only the recorded events whose handler exceeded the built-in
+      latency threshold. The operator reads the hook names in the result
+      to identify which handler to profile next.
+    invoke: ["nerv", "tail", "--slow", "--last", "20"]
+    capture: [exit_code, stdout, duration_ms]

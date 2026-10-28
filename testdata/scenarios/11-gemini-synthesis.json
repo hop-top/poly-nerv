@@ -1,0 +1,30 @@
+{
+  "name": "gemini-synthesis",
+  "description": "Gemini BeforeTool translates to PreToolUse; block applies",
+  "hooks": {
+    "version": "1.0-draft",
+    "hooks": [
+      {
+        "name": "block-rm",
+        "on": "PreToolUse",
+        "match": "Bash|shell",
+        "run": "./testdata/handlers/block-rm-rf.sh"
+      }
+    ]
+  },
+  "envelope": {
+    "event": "PreToolUse",
+    "cli": {"name": "gemini", "version": "1.0.0"},
+    "session": {"id": "test-gemini-synth"},
+    "synthesized": true,
+    "synthesis_source": "BeforeTool",
+    "payload": {
+      "tool_name": "Bash",
+      "tool_input": {"command": "rm -rf /home"}
+    }
+  },
+  "expected": {
+    "action": "block",
+    "message_contains": "blocked"
+  }
+}

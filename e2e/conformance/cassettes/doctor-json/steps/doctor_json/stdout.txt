@@ -1,0 +1,43 @@
+[
+  {
+    "name": "adapter/codex",
+    "status": "OK",
+    "message": "codex-cli 0.146.0",
+    "detail": "/opt/homebrew/bin/codex"
+  },
+  {
+    "name": "adapter/gemini",
+    "status": "OK",
+    "message": "0.51.0",
+    "detail": "/opt/homebrew/bin/gemini"
+  },
+  {
+    "name": "adapter/opencode",
+    "status": "OK",
+    "message": "1.18.10",
+    "detail": "/opt/homebrew/bin/opencode"
+  },
+  {
+    "name": "adapter/claude",
+    "status": "OK",
+    "message": "2.1.220 (Claude Code)",
+    "detail": "/opt/homebrew/bin/claude"
+  },
+  {
+    "name": "hooks.yaml",
+    "status": "WARN",
+    "message": "loaded but no hooks defined"
+  },
+  {
+    "name": "eventlog",
+    "status": "WARN",
+    "message": "log directory does not exist yet",
+    "detail": "/home/dev/.local/state/nerv/events"
+  },
+  {
+    "name": "daemon",
+    "status": "SKIP",
+    "message": "socket not found (daemon mode not active)",
+    "detail": "/var/folders/x6/lrc3lbzd1gs0wvmn_z_t76780000gn/T/nerv.sock"
+  }
+]

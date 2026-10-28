@@ -1,0 +1,26 @@
+%% kit-bus dispatch flow — bus instance from daemon init through Runner to BuiltinFunc.
+%% Author: $USER  Last updated: 2026-04-26
+flowchart TD
+    A["nervd main()"] --> B["config.Load()<br/>merge bus: section"]
+    B --> C{"adapter kind"}
+    C -- memory --> D["bus.New()<br/>(MemoryAdapter)"]
+    C -- jsonl --> E["bus.New(<br/>WithAdapter(MemoryAdapter))<br/>+ JSONLSink subscriber"]
+    C -- sqlite --> F["bus.New(<br/>WithAdapter(SQLiteAdapter))"]
+    C -- network --> G["bus.New(<br/>WithNetwork(addrs))"]
+    D --> H["dispatch.New(cfg, logger, bus)"]
+    E --> H
+    F --> H
+    G --> H
+    H --> I["Runner with<br/>BuiltinRuntimeCfg{<br/>Bus, Env, Logger}"]
+    I --> J["Dispatch(envelope)"]
+    J --> K["match → run hooks"]
+    K --> L1["exec hook (subprocess)<br/>no bus access"]
+    K --> L2["builtin hook<br/>BuiltinFunc(env, runtimeCfg)"]
+    L2 --> M["runtimeCfg.Bus.Publish(<br/>inbox_message_added)"]
+    M --> N["MemoryAdapter fan-out"]
+    N --> O1["in-process<br/>Subscribe handlers"]
+    N --> O2["JSONLSink<br/>events.jsonl"]
+    N --> O3["NetworkAdapter<br/>(phase 3)"]
+    style L2 fill:#ffd
+    style M fill:#ffd
+    style O2 fill:#dfd

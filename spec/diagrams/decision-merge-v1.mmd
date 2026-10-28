@@ -1,0 +1,38 @@
+%% Nerv Decision Merge State Machine
+%%
+%% Precedence: block > rewrite(compose) > warn(accumulate) > allow
+%% Error always fails open to allow.
+
+stateDiagram-v2
+    [*] --> allow : default state
+
+    allow --> warn : handler returns warn
+    allow --> rewrite : handler returns rewrite
+    allow --> block : handler returns block
+    allow --> allow : handler returns allow (no-op)
+
+    warn --> warn : another warn (accumulate messages)
+    warn --> rewrite : handler returns rewrite (escalate)
+    warn --> block : handler returns block (escalate)
+
+    rewrite --> rewrite : another rewrite (compose transforms)
+    rewrite --> block : handler returns block (escalate)
+
+    block --> block : another block (keep first reason)
+
+    error --> allow : fail-open on any error
+
+    note right of block
+        Highest precedence.
+        Stops dispatch; returns block reason to CLI.
+    end note
+
+    note right of rewrite
+        Rewrites compose left-to-right
+        in handler definition order.
+    end note
+
+    note left of warn
+        Warnings accumulate into array.
+        Shown to user but do not block.
+    end note

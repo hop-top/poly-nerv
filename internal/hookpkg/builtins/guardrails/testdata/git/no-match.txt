@@ -1,0 +1,57 @@
+# Each line MUST NOT match any rule in git.yaml.
+# Lines starting with # or blank are skipped.
+
+# Normal commits
+git commit -m "feat: add foo"
+git commit --message "fix bug"
+git commit -am "wip"
+
+# Normal pushes
+git push origin feat/x
+git push -u origin feat/x
+git push origin :stale-branch
+
+# --force-with-lease to non-protected branch is allowed (only protected rule fires for protected names)
+git push --force-with-lease origin feat/my-branch
+git push --force-with-lease origin user/jadb/wip
+
+# Reset variants that are not destructive
+git reset HEAD
+git reset --soft HEAD~1
+git reset --mixed HEAD~1
+
+# Clean variants without force or directory recursion
+git clean -n
+git clean --dry-run
+git clean -i
+
+# Add explicit paths
+git add file.go
+git add internal/foo.go internal/bar.go
+git add -p
+
+# Config that is not the disable knobs
+git config user.email "me@example.com"
+git config core.editor vim
+git config --get remote.origin.url
+
+# Other safe operations
+git status
+git log --oneline
+git diff
+git stash push -u -m "wip"
+git checkout feat/x
+git branch -d merged-branch
+git rebase main
+git pull --ff-only
+
+# Strings that contain --no-verify but not in commit context
+echo "the --no-verify flag is dangerous"
+grep -r 'no-verify' .
+
+# Strings that mention force in non-push context
+echo "force the issue"
+git rebase main --force-rebase
+
+# branches that look protected but are not
+git push --force-with-lease origin feat/release-notes

@@ -1,0 +1,16 @@
+schema_version: "1"
+binary: nerv
+binary_version: b761442
+recorder: xrr
+recorder_version: 0.0.0-manual
+recorded_at: 2026-08-08T20:02:41Z
+scenario_id: nerv/status-json
+scenario_version: 1.0.0
+story_ref:
+  story_id: nerv.conformance.status-json
+  story_path: story.yaml
+  content_hash: sha256:368e838220e4f9256366c4af5b99939928b2bfa65c290686937e33677cdd133d
+steps:
+  - id: status_json
+    cassette_dir: steps/status_json/cassette
+    captures: steps/status_json

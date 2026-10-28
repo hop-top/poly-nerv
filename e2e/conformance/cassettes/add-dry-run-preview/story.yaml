@@ -1,0 +1,28 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/hop-top/kit/main/contracts/story-schema.json
+schema_version: "1"
+story_id: nerv.conformance.add-dry-run-preview
+title: Preview a hook install without changing project state
+binary: nerv
+intent: |
+  An agent wants to see what installing a hook would do before doing
+  it. It invokes add with --dry-run in a project that has no hook
+  configuration yet, expecting a structured preview of the intended
+  effects and, critically, that no file on disk changes. It then
+  re-reads status to confirm the project still has zero hooks.
+preconditions:
+  - the working directory contains no .nerv directory
+  - a local handler script exists at ./handler.sh
+steps:
+  - id: add_dry
+    intent: |
+      Ask for a preview of installing the hook from a local source.
+      The dry run must describe the intended change without applying
+      it, and honor the requested JSON output mode.
+    invoke: ["nerv", "add", "demo-hook", "--source", "./handler.sh", "--dry-run", "--format", "json"]
+    capture: [exit_code, stdout, stderr]
+  - id: status_after_dry
+    intent: |
+      Confirm the dry run left the project untouched: the hook count
+      must still read zero and no hook configuration may exist.
+    invoke: ["nerv", "status", "--format", "json"]
+    capture: [exit_code, stdout]

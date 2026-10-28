@@ -1,0 +1,28 @@
+{
+  "name": "warn-sensitive-file",
+  "description": "Warn when PostToolUse accesses a .env file",
+  "hooks": {
+    "version": "1.0-draft",
+    "hooks": [
+      {
+        "name": "warn-sensitive",
+        "on": "PostToolUse",
+        "match": "Read|Write|Edit",
+        "run": "./testdata/handlers/warn-sensitive.sh"
+      }
+    ]
+  },
+  "envelope": {
+    "event": "PostToolUse",
+    "cli": {"name": "claude", "version": "1.0.0"},
+    "session": {"id": "test-warn-sensitive"},
+    "payload": {
+      "tool_name": "Read",
+      "tool_input": {"file_path": "/app/.env"}
+    }
+  },
+  "expected": {
+    "action": "warn",
+    "message_contains": "sensitive file"
+  }
+}

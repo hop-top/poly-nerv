@@ -1,0 +1,158 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://hop.top/nerv/schemas/hooks/1.0-draft",
+  "title": "Nerv Hooks Configuration",
+  "description": "Schema for hooks.yaml — user-authored hook definitions. Mode 1 (exec) only; HTTP/gRPC modes ship as marketplace forwarder handlers, not spec modes.",
+  "type": "object",
+  "required": ["version", "hooks"],
+  "additionalProperties": false,
+  "properties": {
+    "version": {
+      "type": "string",
+      "description": "Schema version.",
+      "examples": ["1.0-draft"]
+    },
+    "defaults": {
+      "$ref": "#/definitions/hook_defaults"
+    },
+    "hooks": {
+      "type": "array",
+      "description": "Ordered list of hook definitions.",
+      "items": {
+        "$ref": "#/definitions/hook_entry"
+      }
+    }
+  },
+  "definitions": {
+    "hook_defaults": {
+      "type": "object",
+      "description": "Default values applied to all hooks unless overridden.",
+      "additionalProperties": false,
+      "properties": {
+        "timeout": {
+          "type": "integer",
+          "description": "Default timeout in seconds for hook execution.",
+          "default": 10,
+          "minimum": 1
+        },
+        "on_error": {
+          "type": "string",
+          "description": "Default error handling: continue processing or abort.",
+          "enum": ["continue", "abort"],
+          "default": "continue"
+        },
+        "parallel": {
+          "type": "boolean",
+          "description": "Whether hooks for the same event run in parallel by default.",
+          "default": false
+        }
+      }
+    },
+    "hook_entry": {
+      "type": "object",
+      "description": "A single hook definition.",
+      "required": ["name", "on", "run"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Human-readable hook name. Must be unique within the file.",
+          "minLength": 1
+        },
+        "on": {
+          "description": "Event name(s) that trigger this hook. Single string or array.",
+          "oneOf": [
+            {
+              "type": "string",
+              "description": "Single event name.",
+              "minLength": 1
+            },
+            {
+              "type": "array",
+              "description": "Multiple event names.",
+              "items": { "type": "string", "minLength": 1 },
+              "minItems": 1,
+              "uniqueItems": true
+            }
+          ]
+        },
+        "match": {
+          "type": "string",
+          "description": "Regex pattern to filter by tool name. Applied only to tool-category events (PreToolUse, PostToolUse, etc.)."
+        },
+        "run": {
+          "type": "string",
+          "description": "Path to executable handler. Receives nerv envelope on stdin; writes decision JSON to stdout. Mode 1 (exec) only.",
+          "minLength": 1
+        },
+        "on_exit": {
+          "$ref": "#/definitions/exit_code_map"
+        },
+        "require_capability": {
+          "type": "string",
+          "description": "Skip this hook if the active CLI adapter lacks this capability. Value is an event name or adapter feature identifier.",
+          "minLength": 1
+        },
+        "parallel": {
+          "type": "boolean",
+          "description": "Run this hook in parallel with other hooks for the same event. Overrides defaults.parallel."
+        },
+        "timeout": {
+          "type": "integer",
+          "description": "Timeout in seconds. Overrides defaults.timeout.",
+          "minimum": 1
+        },
+        "requires": {
+          "type": "array",
+          "description": "Feature flags this hook needs. e.g. [\"full_payload\"] to opt out of payload redaction.",
+          "items": { "type": "string" },
+          "uniqueItems": true
+        },
+        "disabled": {
+          "type": "boolean",
+          "description": "When true, the dispatcher short-circuits this entry and emits {decision: skipped, reason: disabled} to the event log. Daemon enforcement lands separately. Event-level and binding-level disables live in the .nerv/disabled.yaml sidecar — see schemas/disabled/1.0-draft.",
+          "default": false
+        }
+      }
+    },
+    "exit_code_map": {
+      "type": "object",
+      "description": "Maps handler exit codes to nerv decisions. Keys are exit code integers (as strings). Values are decision strings.",
+      "additionalProperties": false,
+      "properties": {
+        "0": {
+          "type": "string",
+          "description": "Exit 0 decision.",
+          "enum": ["allow", "warn", "block", "rewrite", "error"],
+          "default": "allow"
+        },
+        "1": {
+          "type": "string",
+          "description": "Exit 1 decision.",
+          "enum": ["allow", "warn", "block", "rewrite", "error"],
+          "default": "warn"
+        },
+        "2": {
+          "type": "string",
+          "description": "Exit 2 decision.",
+          "enum": ["allow", "warn", "block", "rewrite", "error"],
+          "default": "block"
+        },
+        "3": {
+          "type": "string",
+          "description": "Exit 3 decision.",
+          "enum": ["allow", "warn", "block", "rewrite", "error"],
+          "default": "rewrite"
+        }
+      },
+      "patternProperties": {
+        "^[4-9]\\d*$|^\\d{2,}$": {
+          "type": "string",
+          "description": "Exit code >= 4 decision.",
+          "enum": ["allow", "warn", "block", "rewrite", "error"],
+          "default": "error"
+        }
+      }
+    }
+  }
+}

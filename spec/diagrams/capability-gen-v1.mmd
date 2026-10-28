@@ -1,0 +1,30 @@
+%% Nerv Capability Generator Pipeline
+%%
+%% events.yaml → nerv-codegen → per-adapter capability files
+%% + downstream consumers.
+
+flowchart TB
+    Source[events.yaml<br/>canonical event definitions] --> Codegen[nerv-codegen]
+
+    Codegen --> Cap1[capabilities.claude.yaml]
+    Codegen --> Cap2[capabilities.gemini.yaml]
+    Codegen --> Cap3[capabilities.codex.yaml]
+    Codegen --> Cap4[capabilities.opencode.yaml]
+
+    subgraph Consumers["Downstream Consumers (10)"]
+        C1[nerv install — adapter config writer]
+        C2[nerv doctor — coverage diagnostics]
+        C3[nerv lint — hooks.yaml validator]
+        C4[nerv tail — event filter autocomplete]
+        C5[Adapter runtime — event routing]
+        C6[SDK type generation — TS/Py/Go types]
+        C7[Documentation site — event reference]
+        C8[Test harness — fixture generation]
+        C9[CI matrix — per-CLI test selection]
+        C10[nerv status — dashboard data]
+    end
+
+    Cap1 --> Consumers
+    Cap2 --> Consumers
+    Cap3 --> Consumers
+    Cap4 --> Consumers

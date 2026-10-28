@@ -1,0 +1,8 @@
+version: v2
+name: buf.build/hop-top/nerv
+lint:
+  use:
+    - STANDARD
+breaking:
+  use:
+    - FILE

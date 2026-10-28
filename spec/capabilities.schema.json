@@ -1,0 +1,127 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://hop.top/nerv/schemas/capabilities/1.0-draft",
+  "title": "Nerv Adapter Capabilities",
+  "description": "Schema for per-adapter capabilities.yaml files. Declares which events a CLI supports natively, which require synthesis, and which are unsupported. Used by nerv doctor, hook skip logic, and adapter codegen.",
+  "type": "object",
+  "required": ["cli", "native"],
+  "additionalProperties": false,
+  "properties": {
+    "cli": {
+      "type": "string",
+      "description": "CLI identifier (matches uxp.CLIName).",
+      "examples": [
+        "claude-code",
+        "gemini-cli",
+        "codex-cli",
+        "opencode"
+      ]
+    },
+    "cli_version_range": {
+      "type": "string",
+      "description": "Semver range this capability map applies to.",
+      "examples": [">=1.0.0 <2.0.0", ">=0.5.0"]
+    },
+    "native": {
+      "type": "array",
+      "description": "Events natively supported by this CLI — no synthesis needed.",
+      "items": {
+        "type": "string",
+        "description": "Event name from spec/events.yaml."
+      },
+      "uniqueItems": true
+    },
+    "synthesized": {
+      "type": "object",
+      "description": "Events the adapter can synthesize. Keyed by event name.",
+      "additionalProperties": {
+        "$ref": "#/definitions/synthesis_entry"
+      }
+    },
+    "unsupported": {
+      "type": "array",
+      "description": "Events that cannot be provided — no native support, no feasible workaround.",
+      "items": {
+        "type": "string",
+        "description": "Event name from spec/events.yaml."
+      },
+      "uniqueItems": true
+    },
+    "close": {
+      "type": "array",
+      "description": "Events with close-but-not-exact native mappings. Semantic mismatch acknowledged.",
+      "items": {
+        "$ref": "#/definitions/close_entry"
+      }
+    }
+  },
+  "definitions": {
+    "synthesis_entry": {
+      "type": "object",
+      "description": "How a single event is synthesized by the adapter.",
+      "required": ["technique", "cost"],
+      "additionalProperties": false,
+      "properties": {
+        "technique": {
+          "type": "string",
+          "description": "Synthesis technique used.",
+          "enum": [
+            "matcher",
+            "daemon",
+            "status_diff",
+            "binary_wrap",
+            "mcp_proxy"
+          ]
+        },
+        "pattern": {
+          "type": "string",
+          "description": "Regex or match expression used for matcher-based synthesis."
+        },
+        "via": {
+          "type": "string",
+          "description": "Source event used to synthesize this event.",
+          "examples": [
+            "BeforeTool",
+            "AfterTool",
+            "tool.execute.before",
+            "shell"
+          ]
+        },
+        "cost": {
+          "type": "string",
+          "description": "Runtime cost of this synthesis technique.",
+          "enum": ["low", "medium", "high"]
+        },
+        "notes": {
+          "type": "string",
+          "description": "Additional context about limitations or caveats."
+        }
+      }
+    },
+    "close_entry": {
+      "type": "object",
+      "description": "An event with a close-but-not-exact native mapping.",
+      "required": ["event", "source"],
+      "additionalProperties": false,
+      "properties": {
+        "event": {
+          "type": "string",
+          "description": "Nerv event name."
+        },
+        "source": {
+          "type": "string",
+          "description": "Native CLI event that approximates this nerv event.",
+          "examples": [
+            "BeforeModel",
+            "SessionEnd",
+            "tui.prompt.append"
+          ]
+        },
+        "notes": {
+          "type": "string",
+          "description": "Explanation of semantic difference."
+        }
+      }
+    }
+  }
+}

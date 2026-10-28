@@ -1,0 +1,34 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/hop-top/kit/main/contracts/story-schema.json
+schema_version: "1"
+story_id: nerv.daemon.hot-reload-after-config-edit
+title: Apply an edited hooks.yaml without restarting the daemon
+binary: nerv
+intent: |
+  A developer who has edited hook configuration wants the running daemon
+  to pick up the change without a restart that would drop in-flight
+  events. They lint the edited file first, hot-reload the daemon, and
+  then re-read status to confirm the new configuration is the one now in
+  effect.
+preconditions:
+  - a hooks.yaml is discoverable from the working directory
+  - the nerv daemon is running
+steps:
+  - id: lint_first
+    intent: |
+      Validate the edited hook configuration before asking the daemon to
+      load it, so a malformed file is caught before it reaches the
+      running process.
+    invoke: ["nerv", "lint"]
+    capture: [exit_code, stdout, stderr]
+  - id: reload
+    intent: |
+      Signal the running daemon to re-read hooks.yaml in place, applying
+      the edited configuration without a restart.
+    invoke: ["nerv", "daemon", "reload"]
+    capture: [exit_code, stdout, stderr]
+  - id: confirm
+    intent: |
+      Re-read status so the developer can confirm the hook and active
+      event counts now reflect the edited configuration.
+    invoke: ["nerv", "status"]
+    capture: [exit_code, stdout]

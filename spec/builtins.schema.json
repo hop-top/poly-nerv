@@ -1,0 +1,117 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://hop.top/nerv/schemas/builtins/1",
+  "title": "Nerv Built-ins Registry",
+  "description": "Schema for spec/builtins.yaml — wizard-readable metadata for in-process built-in hooks. Daemon dispatch source-of-truth lives in internal/hookpkg/builtins/registry.go; this file is wizard-only metadata. Every entry's `id` MUST match a registered builtins.All.Name (validated at wizard startup via builtins.Validate).",
+  "type": "object",
+  "required": ["version", "builtins"],
+  "additionalProperties": false,
+  "properties": {
+    "version": {
+      "type": "string",
+      "description": "Schema version. Bumped in lockstep with builtins.schema.json when the entry shape changes.",
+      "enum": ["1"]
+    },
+    "builtins": {
+      "type": "array",
+      "description": "Ordered list of built-in entries. Order is the wizard prompt order.",
+      "items": { "$ref": "#/definitions/builtin_entry" },
+      "uniqueItems": true
+    }
+  },
+  "definitions": {
+    "builtin_entry": {
+      "type": "object",
+      "description": "One built-in's wizard metadata. NOTE: no `hook_template` field — built-ins dispatch in-process (wizard-onboarding ADR OQ2 resolution); wizard writes only `enabled` to the user config layer.",
+      "required": [
+        "id",
+        "description",
+        "prompt",
+        "default_enabled",
+        "risk_level",
+        "events",
+        "requires_cli"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique slug. MUST match a registered builtins.All.Name in internal/hookpkg/builtins/registry.go.",
+          "pattern": "^[a-z][a-z0-9-]*$",
+          "minLength": 1
+        },
+        "description": {
+          "type": "string",
+          "description": "One-line summary used as wizard list item / header.",
+          "minLength": 1
+        },
+        "prompt": {
+          "type": "string",
+          "description": "Multi-line text shown on the wizard prompt screen for this built-in.",
+          "minLength": 1
+        },
+        "default_enabled": {
+          "type": "boolean",
+          "description": "Wizard pre-selects Enable when true."
+        },
+        "risk_level": {
+          "type": "string",
+          "description": "Drives lipgloss color coding in the wizard. low = read-only, never blocks, no network calls. medium = may warn or rewrite; local side effects only. high = can block events or make network calls.",
+          "enum": ["low", "medium", "high"]
+        },
+        "events": {
+          "type": "array",
+          "description": "Nerv event names this built-in subscribes to. Values MUST appear in spec/events.yaml. Used for adapter-capability filtering.",
+          "items": { "$ref": "#/definitions/event_name" },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "requires_cli": {
+          "type": "array",
+          "description": "CLI ids the built-in needs (e.g. claude, codex, copilot). Empty array = no filter (all CLIs); non-empty = wizard prompts only when adapters.Detect() reports an intersecting CLI.",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        }
+      }
+    },
+    "event_name": {
+      "type": "string",
+      "description": "Canonical nerv event name from spec/events.yaml. Keep this enum in sync with that file.",
+      "enum": [
+        "BeforeToolSelection",
+        "ConfigChange",
+        "CwdChanged",
+        "Elicitation",
+        "ElicitationResult",
+        "FileChanged",
+        "InstructionsLoaded",
+        "LspDiagnostics",
+        "Notification",
+        "PermissionDenied",
+        "PermissionRequest",
+        "PostCompact",
+        "PostToolUse",
+        "PostToolUseFailure",
+        "PreCompact",
+        "PreToolUse",
+        "SessionDiff",
+        "SessionEnd",
+        "SessionStart",
+        "SessionStatus",
+        "Stop",
+        "StopFailure",
+        "SubagentStart",
+        "SubagentStop",
+        "TaskCompleted",
+        "TaskCreated",
+        "TeammateIdle",
+        "UserPromptSubmit",
+        "WorktreeCreate",
+        "WorktreeRemove"
+      ]
+    }
+  }
+}

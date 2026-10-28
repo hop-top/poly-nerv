@@ -1,0 +1,22 @@
+schema_version: "1"
+binary: nerv
+binary_version: b761442
+recorder: xrr
+recorder_version: 0.0.0-manual
+recorded_at: 2026-08-08T20:02:44Z
+scenario_id: nerv/contract-surfaces
+scenario_version: 1.0.0
+story_ref:
+  story_id: nerv.conformance.contract-surfaces
+  story_path: story.yaml
+  content_hash: sha256:3c1877f8094a3aebe05f2e0adf5ffbd558009b203f883a8750ece6a8ceeb8815
+steps:
+  - id: remove_refused
+    cassette_dir: steps/remove_refused/cassette
+    captures: steps/remove_refused
+  - id: capabilities_probe
+    cassette_dir: steps/capabilities_probe/cassette
+    captures: steps/capabilities_probe
+  - id: api_version_ok
+    cassette_dir: steps/api_version_ok/cassette
+    captures: steps/api_version_ok

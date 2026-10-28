@@ -1,0 +1,8 @@
+gh pr merge --squash
+gh pr merge 123 --rebase
+gh pr merge 456 --merge
+gh pr view 123
+gh pr list
+gh issue create
+gh repo view
+echo "use --admin only when necessary"

@@ -1,0 +1,30 @@
+{
+  "name": "codex-block-rm",
+  "description": "Codex CLI: PreToolUse native; rm -rf blocked",
+  "cli": "codex",
+  "native_event": "PreToolUse",
+  "hooks": {
+    "version": "1.0-draft",
+    "hooks": [
+      {
+        "name": "block-rm",
+        "on": "PreToolUse",
+        "match": "Bash|shell",
+        "run": "./testdata/handlers/block-rm-rf.sh"
+      }
+    ]
+  },
+  "envelope": {
+    "event": "PreToolUse",
+    "cli": {"name": "codex", "version": "0.1.0"},
+    "session": {"id": "parity-codex"},
+    "payload": {
+      "tool_name": "Bash",
+      "tool_input": {"command": "rm -rf /"}
+    }
+  },
+  "expected": {
+    "action": "block",
+    "message_contains": "blocked"
+  }
+}

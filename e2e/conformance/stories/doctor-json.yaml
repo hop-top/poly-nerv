@@ -1,0 +1,17 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/hop-top/kit/main/contracts/story-schema.json
+schema_version: "1"
+story_id: nerv.conformance.doctor-json
+title: Run installation health checks with structured results
+binary: nerv
+intent: |
+  An agent performing a pre-flight check before mutating hook
+  configuration runs the health check in JSON mode. It expects one
+  structured record per checked component with a name and a status
+  field it can branch on, rather than glyphs in a human table.
+steps:
+  - id: doctor_json
+    intent: |
+      Emit the health-check results as JSON on stdout so the caller can
+      inspect each component's status without parsing aligned text.
+    invoke: ["nerv", "doctor", "--format", "json"]
+    capture: [exit_code, stdout, stderr]

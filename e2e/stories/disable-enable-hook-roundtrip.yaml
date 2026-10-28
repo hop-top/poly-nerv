@@ -1,0 +1,34 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/hop-top/kit/main/contracts/story-schema.json
+schema_version: "1"
+story_id: nerv.hooks.disable-enable-roundtrip
+title: Disable a hook, then re-enable it to restore config
+binary: nerv
+intent: |
+  A developer wants to silence one noisy hook for the rest of a session
+  without uninstalling it, and then put it back exactly as it was. They
+  disable the hook by name, confirm the change is reflected in status,
+  and finally re-enable it so the round trip restores the original hook
+  configuration rather than leaving the project half-configured.
+preconditions:
+  - a hooks.yaml is discoverable from the working directory
+  - a hook named open-questions is defined in that hooks.yaml
+steps:
+  - id: disable
+    intent: |
+      Turn off the named hook so it stops firing on every event it is
+      bound to, while leaving it registered in the configuration for
+      later re-enabling.
+    invoke: ["nerv", "disable", "hooks", "open-questions"]
+    capture: [exit_code, stdout, stderr]
+  - id: confirm_disabled
+    intent: |
+      Re-read the overall status so the developer can confirm the active
+      event count dropped after the hook was disabled.
+    invoke: ["nerv", "status"]
+    capture: [exit_code, stdout]
+  - id: enable
+    intent: |
+      Re-enable the same hook so the configuration returns to the state
+      it had before the disable, completing the round trip.
+    invoke: ["nerv", "enable", "hooks", "open-questions"]
+    capture: [exit_code, stdout, stderr]

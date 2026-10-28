@@ -1,0 +1,24 @@
+name: Conformance Replay
+on: [pull_request]
+
+jobs:
+  replay:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        cli: [claude, gemini, codex, opencode]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with: { go-version-file: go.mod }
+      - name: Build + Replay
+        run: |
+          go build -buildvcs=false ./...
+          go test -v -run TestConformance -tags conformance ./adapters/...
+      - name: Check cassette diff
+        run: |
+          if ! git diff --quiet testdata/cassettes/; then
+            echo "::warning::Cassette files changed — intentional? Add comment to PR."
+            git diff --stat testdata/cassettes/
+          fi

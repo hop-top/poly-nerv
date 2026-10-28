@@ -1,0 +1,75 @@
+# OpenCode adapter capability map for nerv.
+# Source: docs/research/opencode.md + docs/research/mappings.md
+cli: opencode
+
+native:
+  - source: session.created
+    target: SessionStart
+  - source: session.deleted
+    target: SessionEnd
+  - source: session.idle
+    target: Stop
+  - source: session.error
+    target: StopFailure
+  - source: session.compacted
+    target: PostCompact
+  - source: tool.execute.before
+    target: PreToolUse
+    blocking: true
+  - source: tool.execute.after
+    target: PostToolUse
+  - source: file.edited
+    target: FileChanged
+  - source: permission.asked
+    target: PermissionRequest
+  - source: permission.replied
+    target: PermissionDenied
+    filter: "replied.decision == 'deny'"
+
+close:
+  - source: tui.prompt.append
+    target: UserPromptSubmit
+
+synthesized:
+  - target: UserPromptSubmit
+    via: tui.prompt.append
+  - target: Notification
+    via: session.error
+    filter: partial
+  - target: SubagentStart
+    via: tool.execute.before
+    match: "tool == 'task'"
+  - target: SubagentStop
+    via: tool.execute.after
+    match: "tool == 'task'"
+  - target: InstructionsLoaded
+    via: tool.execute.after
+    match: "tool == 'read' && path matches CLAUDE\\.md"
+  - target: ConfigChange
+    via: file.edited
+    match: "path matches config"
+  - target: CwdChanged
+    via: tool.execute.after
+    match: "tool == 'bash' && input matches '^cd\\b'"
+  - target: WorktreeCreate
+    via: tool.execute.after
+    match: "tool == 'bash' && input matches 'worktree add'"
+  - target: WorktreeRemove
+    via: tool.execute.after
+    match: "tool == 'bash' && input matches 'worktree remove'"
+  - target: TaskCreated
+    via: tool.execute.before
+    match: "tool == 'todo_write'"
+  - target: TaskCompleted
+    via: todo.updated
+    filter: "status == 'completed'"
+  - target: Elicitation
+    via: tool.execute.before
+    match: "tool matches '^mcp__'"
+  - target: ElicitationResult
+    via: tool.execute.after
+    match: "tool matches '^mcp__'"
+
+unsupported:
+  - TeammateIdle
+  - PreCompact

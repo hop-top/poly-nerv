@@ -1,0 +1,38 @@
+[
+  {
+    "key": "nerv version",
+    "value": "dev"
+  },
+  {
+    "key": "adapters",
+    "value": "claude"
+  },
+  {
+    "key": "",
+    "value": "codex"
+  },
+  {
+    "key": "",
+    "value": "gemini"
+  },
+  {
+    "key": "",
+    "value": "opencode"
+  },
+  {
+    "key": "hooks",
+    "value": "1 defined (version: 1)"
+  },
+  {
+    "key": "active events",
+    "value": "1 unique"
+  },
+  {
+    "key": "daemon",
+    "value": "stopped"
+  },
+  {
+    "key": "event log",
+    "value": "not created yet"
+  }
+]

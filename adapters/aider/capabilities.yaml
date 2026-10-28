@@ -1,0 +1,46 @@
+# Aider CLI capability map for nerv adapter.
+# Aider has no native hook system; all events are synthesized
+# via nerv bridge scripts using lint-cmd/test-cmd hooks.
+cli: aider
+
+native: []
+
+synthesized:
+  - nerv: SessionStart
+    source: bridge
+    pattern: aider process start detection
+  - nerv: SessionEnd
+    source: bridge
+    pattern: aider process exit detection
+  - nerv: PreToolUse
+    source: bridge
+    pattern: lint-cmd invocation before apply
+  - nerv: PostToolUse
+    source: bridge
+    pattern: test-cmd invocation after apply
+  - nerv: FileChanged
+    source: bridge
+    pattern: file modification detected by lint/test hooks
+
+unsupported:
+  - SubagentStart
+  - SubagentStop
+  - UserPromptSubmit
+  - Notification
+  - PermissionRequest
+  - PermissionDenied
+  - TaskCreated
+  - TaskCompleted
+  - Stop
+  - StopFailure
+  - TeammateIdle
+  - InstructionsLoaded
+  - ConfigChange
+  - CwdChanged
+  - WorktreeCreate
+  - WorktreeRemove
+  - PreCompact
+  - PostCompact
+  - Elicitation
+  - ElicitationResult
+  - BeforeToolSelection

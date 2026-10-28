@@ -1,0 +1,40 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/hop-top/kit/main/contracts/story-schema.json
+schema_version: "1"
+story_id: nerv.conformance.add-idempotent-reapply
+title: Reissue a hook install and converge to the same state
+binary: nerv
+intent: |
+  An orchestrator that lost track of a previous step reissues the same
+  add command. The CLI should treat the duplicate as a safe upsert:
+  exit clean, register the hook exactly once, and leave the lockfile
+  identical. Removing a hook that does not exist should likewise
+  converge on the desired absent state without erroring.
+preconditions:
+  - the working directory contains no .nerv directory
+  - a local handler script exists at ./handler.sh
+steps:
+  - id: add_first
+    intent: |
+      Install the hook from a local source for the first time,
+      creating the hook registry and lockfile entries.
+    invoke: ["nerv", "add", "demo-hook", "--source", "./handler.sh", "--format", "json"]
+    capture: [exit_code, stdout, stderr]
+  - id: add_again
+    intent: |
+      Reissue the identical install. A retry-safe CLI exits clean and
+      does not duplicate the registration.
+    invoke: ["nerv", "add", "demo-hook", "--source", "./handler.sh", "--format", "json"]
+    capture: [exit_code, stdout, stderr]
+  - id: status_converged
+    intent: |
+      Confirm the double install converged on exactly one registered
+      hook rather than accumulating duplicates.
+    invoke: ["nerv", "status", "--format", "json"]
+    capture: [exit_code, stdout]
+  - id: remove_absent
+    intent: |
+      Remove a hook name that was never installed. The desired end
+      state (hook absent) already holds, so the command should exit
+      clean instead of failing the retry.
+    invoke: ["nerv", "remove", "ghost-hook", "--confirm", "yes", "--format", "json"]
+    capture: [exit_code, stdout, stderr]

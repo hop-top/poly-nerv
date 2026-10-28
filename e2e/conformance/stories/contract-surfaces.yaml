@@ -1,0 +1,37 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/hop-top/kit/main/contracts/story-schema.json
+schema_version: "1"
+story_id: nerv.conformance.contract-surfaces
+title: Rely on declared contracts for gating, capabilities, and versioning
+binary: nerv
+intent: |
+  An agent leans on the CLI's explicit contracts. It expects a
+  destructive command issued without confirmation to be refused with
+  an envelope that declares its exit code, and the process to honor
+  that declaration. It asks the binary for a machine-readable
+  capability listing to plan follow-up calls. And it pins a schema
+  version on a read command, expecting the pinned contract to be
+  served without error.
+preconditions:
+  - a hook named demo-hook is registered in the working directory
+steps:
+  - id: remove_refused
+    intent: |
+      Attempt to remove a registered hook without any confirmation in
+      a non-interactive session. The destructive gate must refuse, and
+      the refusal envelope's declared exit code must match the exit
+      code the process actually returns.
+    invoke: ["nerv", "remove", "demo-hook", "--format", "json"]
+    capture: [exit_code, stdout, stderr]
+  - id: capabilities_probe
+    intent: |
+      Ask the binary to enumerate its own capabilities in JSON so an
+      agent can discover the command surface without scraping help
+      text.
+    invoke: ["nerv", "capabilities", "--format", "json"]
+    capture: [exit_code, stdout, stderr]
+  - id: api_version_ok
+    intent: |
+      Pin an explicit schema version on a read command. The CLI should
+      accept the pin and serve the versioned output shape cleanly.
+    invoke: ["nerv", "status", "--api-version", "1.0", "--format", "json"]
+    capture: [exit_code, stdout, stderr]

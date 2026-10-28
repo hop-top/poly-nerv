@@ -1,0 +1,12 @@
+{
+  "envelope_id": "01JCRTX0EXAMPLETOOLCALL0001",
+  "turn_id": "01JCRTX0TURN0011",
+  "content": [
+    {
+      "type": "tool_call",
+      "call_id": "call_abc123",
+      "name": "weather",
+      "input": { "city": "Tokyo", "units": "metric" }
+    }
+  ]
+}

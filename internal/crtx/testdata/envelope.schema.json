@@ -1,0 +1,242 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://spec.hop.top/crtx/v0.1/envelope.schema.json",
+  "title": "crtx Envelope v0.1",
+  "description": "Language-agnostic envelope for an AI agent conversation. See envelope.md for the prose specification.",
+  "type": "object",
+  "required": ["crtx_version", "id", "created_at", "updated_at", "source", "turns"],
+  "additionalProperties": false,
+  "properties": {
+    "crtx_version": {
+      "type": "string",
+      "const": "0.1"
+    },
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Globally unique conversation id. ULID or UUIDv7 recommended."
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "source": { "$ref": "#/$defs/Source" },
+    "turns": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/Turn" }
+    },
+    "parent_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "fork_point": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "dispatched_from": {
+      "type": "object",
+      "required": ["envelope_id", "call_id"],
+      "additionalProperties": false,
+      "properties": {
+        "envelope_id": { "type": "string", "minLength": 1 },
+        "call_id": { "type": "string", "minLength": 1 }
+      },
+      "description": "When set, this Envelope was spawned by an open tool_call in another Envelope as a dispatch nest. See envelope.md §7.2. Mutually exclusive with parent_id / fork_point."
+    },
+    "injected_turns": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/InjectedTurnRef" },
+      "description": "Foreign Turn slices referenced as part of this Envelope's context. Append-only. See envelope.md §7.3."
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": true
+    }
+  },
+  "dependentRequired": {
+    "parent_id": ["fork_point"],
+    "fork_point": ["parent_id"]
+  },
+  "allOf": [
+    {
+      "if": { "required": ["dispatched_from"] },
+      "then": {
+        "not": {
+          "anyOf": [
+            { "required": ["parent_id"] },
+            { "required": ["fork_point"] }
+          ]
+        }
+      }
+    }
+  ],
+
+  "$defs": {
+    "Role": {
+      "type": "string",
+      "enum": ["user", "assistant", "tool", "system", "developer"]
+    },
+
+    "Source": {
+      "type": "object",
+      "required": ["kind", "version"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": { "type": "string", "minLength": 1 },
+        "version": { "type": "string", "minLength": 1 },
+        "instance": { "type": "string" }
+      }
+    },
+
+    "Turn": {
+      "type": "object",
+      "required": ["id", "role", "created_at", "content"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "role": { "$ref": "#/$defs/Role" },
+        "created_at": { "type": "string", "format": "date-time" },
+        "content": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/ContentPart" }
+        },
+        "agent_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Stable identifier of the producing agent. Optional; recommended only on assistant / tool / developer Turns. See envelope.md §3.1."
+        },
+        "in_reply_to_call_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Targets an open tool_call within the same Envelope. Marks this Turn as a mid-flight message into the lifetime of that call. See envelope.md §3.2."
+        },
+        "metadata": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      }
+    },
+
+    "ContentPart": {
+      "oneOf": [
+        { "$ref": "#/$defs/TextPart" },
+        { "$ref": "#/$defs/ToolCallPart" },
+        { "$ref": "#/$defs/ToolResultPart" },
+        { "$ref": "#/$defs/ImagePart" },
+        { "$ref": "#/$defs/ThinkingPart" },
+        { "$ref": "#/$defs/ExtensionPart" }
+      ]
+    },
+
+    "TextPart": {
+      "type": "object",
+      "required": ["type", "text"],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "const": "text" },
+        "text": { "type": "string" },
+        "metadata": { "type": "object", "additionalProperties": true }
+      }
+    },
+
+    "ToolCallPart": {
+      "type": "object",
+      "required": ["type", "call_id", "name", "input"],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "const": "tool_call" },
+        "call_id": { "type": "string", "minLength": 1 },
+        "name": { "type": "string", "minLength": 1 },
+        "input": {
+          "oneOf": [
+            { "type": "object" },
+            { "type": "string" }
+          ]
+        },
+        "parent_call_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "If set, references an outer tool_call.call_id within the same Envelope whose result has not yet been emitted at this Turn. Marks this call as nested inside the parent. See envelope.md §6.2."
+        },
+        "metadata": { "type": "object", "additionalProperties": true }
+      }
+    },
+
+    "ToolResultPart": {
+      "type": "object",
+      "required": ["type", "call_id", "output"],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "const": "tool_result" },
+        "call_id": { "type": "string", "minLength": 1 },
+        "output": {},
+        "is_error": { "type": "boolean", "default": false },
+        "child_envelope_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "When the call was executed out-of-band in a dispatch nest, the child Envelope's id. See envelope.md §7.2."
+        },
+        "metadata": { "type": "object", "additionalProperties": true }
+      }
+    },
+
+    "InjectedTurnRef": {
+      "type": "object",
+      "required": ["envelope_id", "start_turn_id", "end_turn_id"],
+      "additionalProperties": false,
+      "properties": {
+        "envelope_id": { "type": "string", "minLength": 1 },
+        "start_turn_id": { "type": "string", "minLength": 1 },
+        "end_turn_id": { "type": "string", "minLength": 1 },
+        "injected_after_turn_id": { "type": "string", "minLength": 1 }
+      },
+      "description": "Reference to a slice of Turns in another Envelope. See envelope.md §7.3."
+    },
+
+    "ImagePart": {
+      "type": "object",
+      "required": ["type", "mime"],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "const": "image" },
+        "mime": { "type": "string", "pattern": "^[a-z]+/[a-zA-Z0-9.+-]+$" },
+        "data": { "type": "string", "contentEncoding": "base64" },
+        "url": { "type": "string", "format": "uri" },
+        "alt": { "type": "string" },
+        "metadata": { "type": "object", "additionalProperties": true }
+      },
+      "oneOf": [
+        { "required": ["data"], "not": { "required": ["url"] } },
+        { "required": ["url"], "not": { "required": ["data"] } }
+      ]
+    },
+
+    "ThinkingPart": {
+      "type": "object",
+      "required": ["type", "text"],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "const": "thinking" },
+        "text": { "type": "string" },
+        "signature": { "type": "string" },
+        "metadata": { "type": "object", "additionalProperties": true }
+      }
+    },
+
+    "ExtensionPart": {
+      "type": "object",
+      "required": ["type"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "pattern": "^x-[a-zA-Z0-9._-]+$"
+        }
+      }
+    }
+  }
+}

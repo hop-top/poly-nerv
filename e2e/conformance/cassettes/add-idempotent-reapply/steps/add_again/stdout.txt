@@ -1,0 +1,5 @@
+{
+  "hook": "demo-hook",
+  "action": "installed",
+  "source": "./handler.sh"
+}

@@ -1,0 +1,12 @@
+{
+  "code": "NOT_FOUND",
+  "message": "event \"evt-does-not-exist\" not found in log",
+  "cause": "the event log has no recorded events yet",
+  "suggested_fix": "run `nerv tail` to watch events being recorded, or `nerv replay --last N` once events exist; `nerv status` shows the event-log location",
+  "exit_code": 3
+}
+          
+   ERROR  
+          
+  Not_found: event "evt-does-not-exist" not found in log.                                                             
+

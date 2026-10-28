@@ -1,0 +1,27 @@
+{
+  "name": "allow-ls",
+  "description": "Allow safe ls command via PreToolUse hook",
+  "hooks": {
+    "version": "1.0-draft",
+    "hooks": [
+      {
+        "name": "block-rm",
+        "on": "PreToolUse",
+        "match": "Bash|shell",
+        "run": "./testdata/handlers/block-rm-rf.sh"
+      }
+    ]
+  },
+  "envelope": {
+    "event": "PreToolUse",
+    "cli": {"name": "claude", "version": "1.0.0"},
+    "session": {"id": "test-allow-ls"},
+    "payload": {
+      "tool_name": "Bash",
+      "tool_input": {"command": "ls -la /tmp"}
+    }
+  },
+  "expected": {
+    "action": "allow"
+  }
+}

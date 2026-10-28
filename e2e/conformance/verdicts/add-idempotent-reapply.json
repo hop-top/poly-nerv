@@ -1,0 +1,15 @@
+{
+  "scenario_id": "add-idempotent-reapply",
+  "verdict": "pass",
+  "exit_code": 0,
+  "tier": 3,
+  "scored_at": "2026-08-08T20:03:30.888369Z",
+  "grader_version": "1.0.0",
+  "rules_version": "2026.05.12.1",
+  "facets": [
+    {
+      "factor": 7,
+      "status": "pass"
+    }
+  ]
+}

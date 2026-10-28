@@ -1,0 +1,17 @@
+# Specific paths under home are not blocked (only the bare home dir is)
+rm -rf /tmp/build
+rm -rf node_modules
+rm -rf $HOME/Downloads/old.zip
+rm -rf ~/.cache/foo
+rm -rf /home/dev/projects/scratch
+# Single-file delete
+rm file.txt
+rm -f /tmp/old.log
+# Non-recursive
+rm /tmp/file
+# Glob with explicit parent path
+rm -rf build/*
+rm -rf dist/*
+# Not rm at all
+echo "rm -rf /" > note.txt
+grep "rm -rf" history.log

@@ -1,0 +1,52 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://hop.top/nerv/schemas/disabled/1.0-draft",
+  "title": "Nerv Disabled Sidecar",
+  "description": "Schema for .nerv/disabled.yaml — disabled events and hook×event bindings. Hook-level disable lives on hook entries in hooks.yaml (`disabled: true`); this sidecar handles event-level and binding-level disables. Daemon honours it at dispatch time.",
+  "type": "object",
+  "required": ["version"],
+  "additionalProperties": false,
+  "properties": {
+    "version": {
+      "type": "string",
+      "description": "Schema version.",
+      "examples": ["1.0-draft"]
+    },
+    "events": {
+      "type": "array",
+      "description": "Globally disabled event names. Every hook bound to any of these events is short-circuited regardless of its own state.",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "uniqueItems": true
+    },
+    "bindings": {
+      "type": "array",
+      "description": "Disabled (hook, event) pairs. Finer granularity than the per-hook flag and per-event list — lets one hook stay live on most events while skipping one.",
+      "items": {
+        "$ref": "#/definitions/binding"
+      },
+      "uniqueItems": true
+    }
+  },
+  "definitions": {
+    "binding": {
+      "type": "object",
+      "required": ["hook", "event"],
+      "additionalProperties": false,
+      "properties": {
+        "hook": {
+          "type": "string",
+          "description": "Hook name as it appears in hooks.yaml.",
+          "minLength": 1
+        },
+        "event": {
+          "type": "string",
+          "description": "Event name from the canonical catalog.",
+          "minLength": 1
+        }
+      }
+    }
+  }
+}

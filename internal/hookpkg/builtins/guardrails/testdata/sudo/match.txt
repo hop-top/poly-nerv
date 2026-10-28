@@ -1,0 +1,7 @@
+# sudo-rm-rf, sudo-curl-pipe were dropped — the rm/curl/wget packs
+# match regardless of a leading sudo. Only sudo-shutdown is unique.
+sudo-shutdown	sudo shutdown -h now
+sudo-shutdown	sudo reboot
+sudo-shutdown	sudo halt
+sudo-shutdown	sudo poweroff
+sudo-shutdown	sudo shutdown --halt

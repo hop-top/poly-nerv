@@ -1,0 +1,18 @@
+{
+  "name": "handler_crash",
+  "description": "Handler exits with SIGSEGV signal — fail-open allows",
+  "input": {
+    "event": "PreToolUse",
+    "cli": {"name": "claude", "version": "1.0.0"},
+    "session": {"id": "fail-crash-001"},
+    "payload": {
+      "tool": "bash",
+      "input": {"command": "echo hello"}
+    },
+    "handler": "testdata/handlers/failures/crash.sh"
+  },
+  "expected": {
+    "action": "allow",
+    "reason": "handler crashed (signal: segmentation fault)"
+  }
+}

@@ -1,0 +1,32 @@
+{
+  "name": "gemini-block-rm",
+  "description": "Gemini CLI: BeforeTool translated to PreToolUse; rm -rf blocked",
+  "cli": "gemini",
+  "native_event": "BeforeTool",
+  "hooks": {
+    "version": "1.0-draft",
+    "hooks": [
+      {
+        "name": "block-rm",
+        "on": "PreToolUse",
+        "match": "Bash|shell",
+        "run": "./testdata/handlers/block-rm-rf.sh"
+      }
+    ]
+  },
+  "envelope": {
+    "event": "PreToolUse",
+    "cli": {"name": "gemini", "version": "1.0.0"},
+    "session": {"id": "parity-gemini"},
+    "synthesized": true,
+    "synthesis_source": "BeforeTool",
+    "payload": {
+      "tool_name": "Bash",
+      "tool_input": {"command": "rm -rf /"}
+    }
+  },
+  "expected": {
+    "action": "block",
+    "message_contains": "blocked"
+  }
+}

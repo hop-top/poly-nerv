@@ -1,0 +1,69 @@
+# Rule pack: rm
+# Schema: rulepack.schema.json
+#
+# Block / ask before unrecoverable filesystem deletion. Targets the
+# common-mistake patterns: rooted paths, $HOME variants, unquoted
+# globs, and the no-preserve-root override.
+
+name: rm
+version: 1
+description: Block destructive rm invocations.
+applies_to:
+  tool: Bash
+
+rules:
+  # NOTE: most-specific rules come first. The recursive flag pattern
+  # is shared via a regexp character class accepting any order of
+  # r and f: -([a-zA-Z]*r[a-zA-Z]*f|[a-zA-Z]*f[a-zA-Z]*r)[a-zA-Z]*
+  # (so -rf, -fr, -rvf, -frv all match).
+
+  # ── No-preserve override (must precede the / target rule) ──────────
+  - id: rm-no-preserve
+    description: rm -rf with --no-preserve-root
+    severity: high
+    pattern: '\brm\b[^|;]*--no-preserve-root'
+    default_mode: block
+    reason: |
+      --no-preserve-root explicitly disables the kernel's safeguard
+      against recursive deletion of /. If you reached for this flag,
+      stop and reconsider: the answer is almost certainly never to
+      bypass the safeguard.
+
+  # ── Catastrophic targets ───────────────────────────────────────────
+  - id: rm-rf-root
+    description: rm -rf / (filesystem root)
+    severity: high
+    pattern: '\brm\b[^|;]*-([a-zA-Z]*r[a-zA-Z]*f|[a-zA-Z]*f[a-zA-Z]*r)[a-zA-Z]*[^|;]*\s/(\s|$|;|\|)'
+    default_mode: block
+    reason: |
+      'rm -rf /' deletes the root filesystem. There is no scenario
+      where an AI agent should run this. If you need to clean a
+      mounted volume, target the mountpoint explicitly.
+
+  - id: rm-rf-home
+    description: rm -rf on a bare $HOME / ~ / /Users/<user> (entire home)
+    severity: high
+    pattern: '\brm\b[^|;]*-([a-zA-Z]*r[a-zA-Z]*f|[a-zA-Z]*f[a-zA-Z]*r)[a-zA-Z]*[^|;]*\s(\$HOME|~|/Users/[a-zA-Z0-9._-]+|/home/[a-zA-Z0-9._-]+)/?(\s|$|;|\|)'
+    default_mode: block
+    reason: |
+      Recursive deletion of the entire user home directory destroys
+      all personal config, SSH keys, dotfiles, project state. Use a
+      specific subpath instead, or 'trash' for a recoverable move.
+
+      A trailing slash on the path is allowed (rm -rf $HOME/) but
+      anything beyond it (rm -rf $HOME/Downloads) is treated as
+      explicit-subpath and not blocked by this rule.
+
+  # ── Unscoped globs ─────────────────────────────────────────────────
+  - id: rm-rf-glob
+    description: rm -rf * (or similar unscoped glob) without a parent path
+    severity: medium
+    pattern: '\brm\b\s+-([a-zA-Z]*r[a-zA-Z]*f|[a-zA-Z]*f[a-zA-Z]*r)[a-zA-Z]*\s+\*(\s|$|;|\|)'
+    default_mode: hitl
+    destructive: true
+    backup_strategy: path_archive
+    reason: |
+      'rm -rf *' deletes everything in the current directory. The
+      blast radius is whatever the agent's cwd happens to be — often
+      not what was intended. Default: ask first, archive cwd before
+      proceeding.

@@ -1,0 +1,147 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://hop.top/nerv/schemas/rulepack/1",
+  "title": "Nerv Rule Pack",
+  "description": "Schema for spec/rulepacks/<name>.yaml — declarative guardrail rules loaded by the guardrails built-in at nervd startup. See docs/architecture/guardrails-builtin.md.",
+  "type": "object",
+  "required": ["name", "version", "applies_to", "rules"],
+  "additionalProperties": false,
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Pack name; matches filename minus .yaml. Globally unique across packs.",
+      "pattern": "^[a-z][a-z0-9-]*$"
+    },
+    "version": {
+      "type": "integer",
+      "description": "Pack format version. Bump on breaking change to rule entry shape.",
+      "minimum": 1
+    },
+    "description": {
+      "type": "string",
+      "description": "One-line summary of what this pack guards against."
+    },
+    "applies_to": {
+      "type": "object",
+      "description": "Envelope filter. Pack only evaluated when the envelope matches.",
+      "required": ["tool"],
+      "additionalProperties": false,
+      "properties": {
+        "tool": {
+          "type": "string",
+          "description": "tool_use.name to match (e.g. 'Bash'). Single value in v1; array in future versions."
+        }
+      }
+    },
+    "rules": {
+      "type": "array",
+      "description": "Ordered list of rules. First match wins per pack; packs are evaluated in load order (alphabetical by filename).",
+      "items": { "$ref": "#/definitions/rule" },
+      "uniqueItems": true,
+      "minItems": 1
+    }
+  },
+  "definitions": {
+    "rule": {
+      "type": "object",
+      "required": ["id", "description", "severity", "pattern", "default_mode", "reason"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Globally unique rule id (kebab-case, includes pack prefix). Used as config key in hooks.yaml.",
+          "pattern": "^[a-z][a-z0-9-]*$"
+        },
+        "description": {
+          "type": "string",
+          "description": "One-line summary for human review."
+        },
+        "severity": {
+          "type": "string",
+          "description": "Risk level. Informational; does not change runtime behavior in v1.",
+          "enum": ["low", "medium", "high"]
+        },
+        "pattern": {
+          "type": "string",
+          "description": "Go regexp matched against tool_input.command. Use \\b for word boundaries; remember Go regexp does NOT support lookaround."
+        },
+        "default_mode": {
+          "$ref": "#/definitions/mode",
+          "description": "Mode applied when user has no override in hooks.yaml."
+        },
+        "rewrites": {
+          "type": "array",
+          "description": "Required if default_mode is 'rewrite' or if any user override may set 'rewrite'. Strategies applied in order.",
+          "items": { "$ref": "#/definitions/rewrite_strategy" }
+        },
+        "destructive": {
+          "type": "boolean",
+          "description": "If true, capture a backup before letting the command proceed (post-decision, pre-exec). Backup failure upgrades the rule to 'block'.",
+          "default": false
+        },
+        "backup_strategy": {
+          "$ref": "#/definitions/backup_strategy",
+          "description": "Required if destructive=true. Names the capture method."
+        },
+        "reason": {
+          "type": "string",
+          "description": "Multi-line explanation surfaced in deny / ask UX. Should describe WHY the rule exists and what to do instead."
+        }
+      },
+      "allOf": [
+        {
+          "description": "destructive=true requires backup_strategy",
+          "if": { "properties": { "destructive": { "const": true } } },
+          "then": { "required": ["backup_strategy"] }
+        }
+      ]
+    },
+    "mode": {
+      "type": "string",
+      "description": "Decision mode. allow=pass-through; block=deny; rewrite=mutate-then-allow; hitl=sync-prompt; manager=async-via-bus to manager profile; peer-N=N async approvals.",
+      "pattern": "^(allow|block|rewrite|hitl|manager|peer-[1-9][0-9]*)$"
+    },
+    "rewrite_strategy": {
+      "type": "object",
+      "required": ["strategy"],
+      "oneOf": [
+        {
+          "properties": {
+            "strategy": { "const": "strip_flag" },
+            "flag": { "type": "string", "description": "The flag token to remove (e.g. '--no-verify'). Removes the flag and its value if any." }
+          },
+          "required": ["flag"],
+          "additionalProperties": false
+        },
+        {
+          "properties": {
+            "strategy": { "const": "replace_token" },
+            "from": { "type": "string", "description": "Token to find." },
+            "to": { "type": "string", "description": "Token to substitute." }
+          },
+          "required": ["from", "to"],
+          "additionalProperties": false
+        },
+        {
+          "properties": {
+            "strategy": { "const": "prepend_args" },
+            "args": { "type": "array", "items": { "type": "string" }, "description": "Arguments inserted after the subcommand (e.g. ['--dry-run'])." }
+          },
+          "required": ["args"],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "backup_strategy": {
+      "type": "string",
+      "description": "Capture method. See ADR §Backup contract for semantics.",
+      "enum": [
+        "path_archive",
+        "git_stash_full",
+        "git_untracked",
+        "remote_bundle",
+        "script_capture"
+      ]
+    }
+  }
+}

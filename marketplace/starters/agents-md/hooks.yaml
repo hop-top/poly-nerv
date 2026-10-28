@@ -1,0 +1,26 @@
+version: "1"
+defaults:
+  timeout: 10
+  on_error: continue
+
+hooks:
+  - name: validate-agents-md
+    on: PostToolUse
+    match: "Write|Edit"
+    run: .nerv/hooks/validate-agents-md.sh
+
+  - name: enforce-conventional-commits
+    on: PreToolUse
+    match: "Bash"
+    run: .nerv/hooks/enforce-conventional-commits.sh
+
+  - name: warn-large-writes
+    on: PostToolUse
+    match: "Write|Edit"
+    run: .nerv/hooks/warn-large-writes.sh
+
+  - name: block-secrets
+    on:
+      - PreToolUse
+      - PostToolUse
+    run: .nerv/hooks/block-secrets.sh

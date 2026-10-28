@@ -1,0 +1,9 @@
+{
+  "envelope_id": "01JCRTX0EXAMPLETOOLCALL0001",
+  "created_at": "2026-05-28T14:05:00Z",
+  "source": {
+    "kind": "stem",
+    "version": "0.1.0",
+    "instance": "host-laptop/pid-4711"
+  }
+}

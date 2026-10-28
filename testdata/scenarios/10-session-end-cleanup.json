@@ -1,0 +1,23 @@
+{
+  "name": "session-end-cleanup",
+  "description": "SessionEnd triggers cleanup handler; passthrough allow",
+  "hooks": {
+    "version": "1.0-draft",
+    "hooks": [
+      {
+        "name": "session-cleanup",
+        "on": "SessionEnd",
+        "run": "./testdata/handlers/allow-passthrough.sh"
+      }
+    ]
+  },
+  "envelope": {
+    "event": "SessionEnd",
+    "cli": {"name": "claude", "version": "1.0.0"},
+    "session": {"id": "test-session-end"},
+    "payload": {}
+  },
+  "expected": {
+    "action": "allow"
+  }
+}

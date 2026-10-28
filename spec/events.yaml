@@ -1,0 +1,668 @@
+# Nerv Event Registry
+# Single source of truth for all hook events.
+# This file drives codegen — 10+ downstream consumers depend on it.
+# Do NOT rename/reorder events without updating all adapters.
+#
+# NOTE: Some payloads include session_id / project_key / cwd fields.
+# These duplicate envelope.session.* and exist for per-event context
+# when the payload is consumed standalone (e.g., codegen templates,
+# cassette stubs). Canonical session identity lives in envelope.session.
+#
+# ── origin field ──────────────────────────────────────────────────
+# Every event declares `origin: native | derived | extension`.
+# Default = native (omitted = native).
+#
+#   native    Emitted directly by an adapter from the host CLI's
+#             actual lifecycle (Claude Code, Gemini, Codex, …).
+#   extension Native to one CLI but not all; adapters that lack it
+#             either ignore or synthesize per capabilities.yaml.
+#             Source CLI tracked in `extension_source:` for
+#             provenance (gemini-cli, opencode, …).
+#   derived   Synthesized by the dispatcher/engine from a native
+#             event + filter/correlation. Has a `derivation:` block
+#             declaring `from:` (source event) and `when:` (match
+#             rule). Consumers receive both the source event and
+#             the derived one.
+#
+# Adapter capabilities.yaml (spec/capabilities.schema.json) declares
+# which events the adapter emits natively vs. synthesizes. The
+# `origin` field is the catalog-side counterpart: it tells consumers
+# whether an event comes straight from a CLI lifecycle, is
+# extension-only (subset of CLIs), or is engine-derived (no CLI
+# emits it natively — the dispatcher creates it).
+#
+# ── derivation block (origin: derived only) ───────────────────────
+# derivation:
+#   from: <source-event-name>          # required
+#   when:                              # required; match clauses
+#     tool_in: [Read, Write, …]        # tool-name allowlist
+#     path_matches: '<regex>'          # payload field regex
+#     # arbitrary additional clauses interpreted by the dispatcher
+#
+# Dispatchers MUST emit the derived event in addition to (not
+# instead of) the source native event so existing consumers keep
+# working.
+#
+# ── Rule engine observers ─────────────────────────────────────────
+# hop's rule engine layers four observers on top of nerv events —
+# wsm:event (workspace lifecycle), rux:send (notifications),
+# rux:capture (UI capture), and ctxt:capture (knowledge graph
+# ingestion). Observers consume nerv envelopes without modifying
+# this taxonomy. See:
+#   https://github.com/hop-top/hop/blob/main/docs/rule-engine-spec.md
+#   https://github.com/hop-top/hop/blob/main/docs/ingestion-retrieval/spec.md
+#
+# version: "1.0-draft"
+# maintainer: $USER
+# last-updated: 2026-04-25
+
+version: "1.0-draft"
+description: >
+  Universal Hooks Protocol event taxonomy. Superset of Claude Code's
+  26 native events plus 4 extension events from Gemini CLI and
+  OpenCode plus dispatcher-derived events. Each entry is the
+  canonical definition; adapters synthesize missing events per their
+  capabilities.yaml. Every event declares `origin:
+  native|derived|extension` (default native).
+
+events:
+  # ── Session lifecycle ────────────────────────────────────────────
+  - name: SessionStart
+    category: session
+    description: Session begins or resumes.
+    direction: outbound
+    blocking: false
+    origin: native
+    payload:
+      - field: session_id
+        type: string
+      - field: resumed
+        type: boolean
+      - field: project_key
+        type: string
+      - field: cwd
+        type: string
+
+  - name: SessionEnd
+    category: session
+    description: Session terminates (graceful or forced).
+    direction: outbound
+    blocking: false
+    origin: native
+    payload:
+      - field: session_id
+        type: string
+      - field: exit_code
+        type: integer
+      - field: duration_ms
+        type: integer
+
+  # ── Prompt lifecycle ─────────────────────────────────────────────
+  - name: UserPromptSubmit
+    category: prompt
+    description: User submits a prompt before the model processes it.
+    direction: inbound
+    blocking: true
+    origin: native
+    payload:
+      - field: prompt
+        type: string
+      - field: turn_index
+        type: integer
+      - field: attachments
+        type: array
+
+  # ── Tool lifecycle ───────────────────────────────────────────────
+  - name: PreToolUse
+    category: tool
+    description: Before a tool call executes; handler can block.
+    direction: outbound
+    blocking: true
+    origin: native
+    payload:
+      - field: tool_name
+        type: string
+      - field: tool_input
+        type: object
+      - field: session_id
+        type: string
+
+  - name: PostToolUse
+    category: tool
+    description: After a tool call succeeds.
+    direction: outbound
+    blocking: false
+    origin: native
+    payload:
+      - field: tool_name
+        type: string
+      - field: tool_input
+        type: object
+      - field: tool_response
+        type: object
+      - field: duration_ms
+        type: integer
+
+  - name: PostToolUseFailure
+    category: tool
+    description: After a tool call fails.
+    direction: outbound
+    blocking: false
+    origin: native
+    payload:
+      - field: tool_name
+        type: string
+      - field: tool_input
+        type: object
+      - field: error
+        type: string
+      - field: exit_code
+        type: integer
+
+  # ── Permission lifecycle ─────────────────────────────────────────
+  - name: PermissionRequest
+    category: permission
+    description: Permission dialog appears for a tool call.
+    direction: outbound
+    blocking: true
+    origin: native
+    payload:
+      - field: tool_name
+        type: string
+      - field: tool_input
+        type: object
+      - field: permission_type
+        type: string
+
+  - name: PermissionDenied
+    category: permission
+    description: Tool call denied by auto-mode classifier or user.
+    direction: outbound
+    blocking: false
+    origin: native
+    payload:
+      - field: tool_name
+        type: string
+      - field: tool_input
+        type: object
+      - field: denied_by
+        type: string
+      - field: reason
+        type: string
+
+  # ── Notification ─────────────────────────────────────────────────
+  - name: Notification
+    category: notification
+    description: CLI sends a user-facing notification.
+    direction: outbound
+    blocking: false
+    origin: native
+    payload:
+      - field: message
+        type: string
+      - field: level
+        type: string
+
+  # ── Agent lifecycle ──────────────────────────────────────────────
+  - name: SubagentStart
+    category: agent
+    description: Subagent spawned by the main agent.
+    direction: outbound
+    blocking: false
+    origin: native
+    payload:
+      - field: agent_id
+        type: string
+      - field: agent_type
+        type: string
+      - field: parent_session_id
+        type: string
+
+  - name: SubagentStop
+    category: agent
+    description: Subagent finishes execution.
+    direction: outbound
+    blocking: false
+    origin: native
+    payload:
+      - field: agent_id
+        type: string
+      - field: agent_type
+        type: string
+      - field: exit_code
+        type: integer
+      - field: duration_ms
+        type: integer
+
+  # ── Task lifecycle ───────────────────────────────────────────────
+  - name: TaskCreated
+    category: task
+    description: Task created via TaskCreate tool or equivalent.
+    direction: outbound
+    blocking: false
+    origin: native
+    payload:
+      - field: task_id
+        type: string
+      - field: title
+        type: string
+      - field: description
+        type: string
+
+  - name: TaskCompleted
+    category: task
+    description: Task marked completed.
+    direction: outbound
+    blocking: false
+    origin: native
+    payload:
+      - field: task_id
+        type: string
+      - field: title
+        type: string
+      - field: result
+        type: string
+
+  # ── Stop lifecycle ───────────────────────────────────────────────
+  - name: Stop
+    category: session
+    description: Model finishes responding for this turn.
+    direction: outbound
+    blocking: true
+    origin: native
+    payload:
+      - field: stop_reason
+        type: string
+      - field: turn_index
+        type: integer
+
+  - name: StopFailure
+    category: session
+    description: Turn ends due to API error or internal failure.
+    direction: outbound
+    blocking: false
+    origin: native
+    payload:
+      - field: error
+        type: string
+      - field: error_code
+        type: string
+      - field: turn_index
+        type: integer
+
+  - name: TeammateIdle
+    category: agent
+    description: Agent-team teammate going idle (multi-agent only).
+    direction: outbound
+    blocking: false
+    origin: native
+    payload:
+      - field: teammate_id
+        type: string
+      - field: teammate_role
+        type: string
+
+  # ── Context lifecycle ────────────────────────────────────────────
+  - name: InstructionsLoaded
+    category: context
+    description: >
+      CLAUDE.md or equivalent rules file loaded/reloaded.
+    direction: outbound
+    blocking: false
+    origin: native
+    payload:
+      - field: file_path
+        type: string
+      - field: source
+        type: string
+
+  - name: ConfigChange
+    category: context
+    description: Config file changes during a session.
+    direction: outbound
+    blocking: false
+    origin: native
+    payload:
+      - field: file_path
+        type: string
+      - field: config_type
+        type: string
+
+  - name: CwdChanged
+    category: context
+    description: Working directory changes (e.g. via cd).
+    direction: outbound
+    blocking: false
+    origin: native
+    payload:
+      - field: old_cwd
+        type: string
+      - field: new_cwd
+        type: string
+
+  # ── File lifecycle ───────────────────────────────────────────────
+  - name: FileChanged
+    category: file
+    description: Watched file changes on disk.
+    direction: outbound
+    blocking: false
+    origin: native
+    payload:
+      - field: file_path
+        type: string
+      - field: change_type
+        type: string
+
+  # ── Worktree lifecycle ───────────────────────────────────────────
+  - name: WorktreeCreate
+    category: worktree
+    description: Git worktree created.
+    direction: outbound
+    blocking: false
+    origin: native
+    payload:
+      - field: branch
+        type: string
+      - field: path
+        type: string
+
+  - name: WorktreeRemove
+    category: worktree
+    description: Git worktree removed.
+    direction: outbound
+    blocking: false
+    origin: native
+    payload:
+      - field: branch
+        type: string
+      - field: path
+        type: string
+
+  # ── Compaction lifecycle ─────────────────────────────────────────
+  - name: PreCompact
+    category: context
+    description: Before context compaction begins.
+    direction: outbound
+    blocking: false
+    origin: native
+    payload:
+      - field: token_count
+        type: integer
+      - field: threshold
+        type: integer
+
+  - name: PostCompact
+    category: context
+    description: After context compaction completes.
+    direction: outbound
+    blocking: false
+    origin: native
+    payload:
+      - field: tokens_before
+        type: integer
+      - field: tokens_after
+        type: integer
+      - field: compaction_ratio
+        type: number
+
+  # ── MCP elicitation lifecycle ────────────────────────────────────
+  - name: Elicitation
+    category: mcp
+    description: MCP server requests user input.
+    direction: outbound
+    blocking: true
+    origin: native
+    payload:
+      - field: mcp_server
+        type: string
+      - field: request
+        type: object
+
+  - name: ElicitationResult
+    category: mcp
+    description: User responds to MCP elicitation request.
+    direction: outbound
+    blocking: false
+    origin: native
+    payload:
+      - field: mcp_server
+        type: string
+      - field: request
+        type: object
+      - field: response
+        type: object
+
+  # ── Extension events (non-Claude CLIs) ───────────────────────────
+  # These events exist in other CLIs but have no Claude Code
+  # equivalent. Adapters for those CLIs emit them natively; other
+  # adapters ignore them or synthesize per capabilities.yaml.
+  # `origin: extension` + `extension_source: <cli>` flag the source.
+
+  - name: BeforeToolSelection
+    category: tool
+    description: >
+      Before model picks which tool to call (Gemini-only).
+    direction: outbound
+    blocking: true
+    origin: extension
+    extension_source: gemini-cli
+    payload:
+      - field: available_tools
+        type: array
+      - field: turn_index
+        type: integer
+
+  - name: LspDiagnostics
+    category: context
+    description: LSP diagnostics arrived (OpenCode-only).
+    direction: outbound
+    blocking: false
+    origin: extension
+    extension_source: opencode
+    payload:
+      - field: file_path
+        type: string
+      - field: diagnostics
+        type: array
+      - field: severity_counts
+        type: object
+
+  - name: SessionDiff
+    category: session
+    description: Session code diff computed (OpenCode-only).
+    direction: outbound
+    blocking: false
+    origin: extension
+    extension_source: opencode
+    payload:
+      - field: diff
+        type: string
+      - field: files_changed
+        type: integer
+
+  - name: SessionStatus
+    category: session
+    description: Session status transition (OpenCode-only).
+    direction: outbound
+    blocking: false
+    origin: extension
+    extension_source: opencode
+    payload:
+      - field: old_status
+        type: string
+      - field: new_status
+        type: string
+
+  # ── Derived events (synthesized by dispatcher) ───────────────────
+  # Derived events are emitted by the engine in addition to the
+  # source native event; they never replace the native event.
+  # `derivation:` declares the matching rule (from + when).
+  # `memory_kind` is computed from the matched path prefix:
+  #   project → .claude/projects/<id>/memory/ or project CLAUDE.md
+  #   user    → ~/.claude/CLAUDE.md, ~/.claude/memory/, MEMORY.md
+  #   skill   → skill-scoped memory under .claude/skills/
+  #   agent   → ~/.agents/memory/ or agent profile memory
+  #   unknown → matched path regex but kind couldn't be classified
+
+  - name: MemoryRead
+    category: memory
+    description: >
+      Derived event — Read tool call targeting a canonical memory
+      path (CLAUDE.md, MEMORY.md, .claude/memory/**, agent memory).
+    direction: outbound
+    blocking: false
+    origin: derived
+    derivation:
+      from: PreToolUse
+      when:
+        tool_in: [Read]
+        path_matches: '\.claude/(projects/[^/]+/memory/|memory/|CLAUDE\.md$)|^MEMORY\.md$|^\.agents/memory/'
+    payload:
+      - field: tool_name
+        type: string
+      - field: tool_input
+        type: object
+      - field: memory_kind
+        type: string
+        notes: project | user | skill | agent | unknown — derived from path prefix.
+
+  - name: MemoryWrite
+    category: memory
+    description: >
+      Derived event — Write/Edit/NotebookEdit tool call targeting
+      a canonical memory path. Same path regex as MemoryRead.
+    direction: outbound
+    blocking: false
+    origin: derived
+    derivation:
+      from: PreToolUse
+      when:
+        tool_in: [Write, Edit, NotebookEdit]
+        path_matches: '\.claude/(projects/[^/]+/memory/|memory/|CLAUDE\.md$)|^MEMORY\.md$|^\.agents/memory/'
+    payload:
+      - field: tool_name
+        type: string
+      - field: tool_input
+        type: object
+      - field: memory_kind
+        type: string
+        notes: project | user | skill | agent | unknown — derived from path prefix.
+
+  # ── Bus / inbox-message lifecycle (kit-bus phase 1) ──────────────
+  # Canonical naming rule (see docs/architecture/kit-bus-adoption.md
+  # §"Reserved" / docs/stories/US-0018):
+  #   <container>_<verb>          — container lifecycle (e.g. inbox_*)
+  #   <container>_<item>_<verb>   — item lifecycle within a container
+  #
+  # The four `inbox_message_*` events below are ITEM lifecycle events
+  # (entries arriving / changing / leaving an inbox container).
+  #
+  # RESERVED — do NOT add here without a separate ADR:
+  #   inbox_created    — inbox CONTAINER was provisioned
+  #   inbox_destroyed  — inbox CONTAINER was removed
+  # These describe the container itself, not items inside. Confusing
+  # the two breaks subscriber expectations (see US-0018 AC).
+  - name: inbox_message_added
+    category: bus
+    description: A new entry arrived in an inbox container.
+    direction: outbound
+    blocking: false
+    payload:
+      - field: schema_version
+        type: string
+        example: "1.0"
+      - field: msg_id
+        type: string
+        required: true
+      - field: agent_id
+        type: string
+      - field: inbox_id
+        type: string
+      - field: source_session_id
+        type: string
+      - field: kind
+        type: string
+        example: "open-question"
+      - field: ts
+        type: string
+        format: rfc3339
+      - field: payload_ref
+        type: string
+        description: opaque pointer (file path, ctxt id, etc.)
+
+  - name: inbox_message_updated
+    category: bus
+    description: An existing inbox entry was edited in-place.
+    direction: outbound
+    blocking: false
+    payload:
+      - field: schema_version
+        type: string
+      - field: msg_id
+        type: string
+        required: true
+      - field: fields_changed
+        type: array
+      - field: ts
+        type: string
+        format: rfc3339
+
+  - name: inbox_message_promoted
+    category: bus
+    description: An inbox entry was promoted to a downstream system.
+    direction: outbound
+    blocking: false
+    payload:
+      - field: schema_version
+        type: string
+      - field: msg_id
+        type: string
+        required: true
+      - field: target
+        type: string
+        enum: ["tlc-task", "ctxt-object", "other"]
+      - field: target_id
+        type: string
+      - field: ts
+        type: string
+        format: rfc3339
+
+  - name: inbox_message_dropped
+    category: bus
+    description: An inbox entry was removed without promotion.
+    direction: outbound
+    blocking: false
+    payload:
+      - field: schema_version
+        type: string
+      - field: msg_id
+        type: string
+        required: true
+      - field: reason
+        type: string
+        enum: ["user-deleted", "ttl-expired", "duplicate"]
+      - field: ts
+        type: string
+        format: rfc3339
+
+# ── Category index ─────────────────────────────────────────────────
+# session: SessionStart, SessionEnd, Stop, StopFailure,
+#          SessionDiff*, SessionStatus*
+# prompt:  UserPromptSubmit
+# tool:    PreToolUse, PostToolUse, PostToolUseFailure,
+#          BeforeToolSelection*
+# permission: PermissionRequest, PermissionDenied
+# notification: Notification
+# agent:   SubagentStart, SubagentStop, TeammateIdle
+# task:    TaskCreated, TaskCompleted
+# context: InstructionsLoaded, ConfigChange, CwdChanged,
+#          PreCompact, PostCompact, LspDiagnostics*
+# file:    FileChanged
+# worktree: WorktreeCreate, WorktreeRemove
+# mcp:     Elicitation, ElicitationResult
+# memory:  MemoryRead^, MemoryWrite^
+# bus:     inbox_message_added, inbox_message_updated,
+#          inbox_message_promoted, inbox_message_dropped
+#
+# * = extension event
+# ^ = derived event (synthesized from PreToolUse)

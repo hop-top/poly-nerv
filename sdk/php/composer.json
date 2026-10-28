@@ -1,0 +1,38 @@
+{
+    "name": "hop-top/nerv",
+    "description": "PHP SDK for nerv — Universal Hooks Protocol",
+    "type": "library",
+    "license": "MIT",
+    "keywords": [
+        "nerv",
+        "hooks",
+        "envelope",
+        "protobuf"
+    ],
+    "require": {
+        "php": ">=8.2",
+        "google/protobuf": "^5.36"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^11.0"
+    },
+    "suggest": {
+        "ext-grpc": "Required for HopTop\\Nerv\\Client::fromSocket and fromBaseUrl real wire transport; install via `pecl install grpc` (or `apt install php-grpc` on Debian/Ubuntu)."
+    },
+    "autoload": {
+        "psr-4": {
+            "HopTop\\Nerv\\": "src/",
+            "Nerv\\V1\\": "src/Gen/Nerv/V1/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "HopTop\\Nerv\\Tests\\": "tests/"
+        }
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true,
+    "config": {
+        "sort-packages": true
+    }
+}

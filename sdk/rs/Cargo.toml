@@ -1,0 +1,44 @@
+[package]
+name = "hop-top-nerv"
+version = "0.1.0-alpha.0"
+edition = "2024"
+rust-version = "1.88"
+license = "MIT"
+description = "Rust client SDK for nerv — Universal Hooks Protocol (gRPC over Unix sockets)."
+repository = "https://github.com/hop-top/poly-nerv"
+readme = "README.md"
+keywords = ["nerv", "hooks", "grpc", "tonic"]
+categories = ["api-bindings", "development-tools"]
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+tonic = { version = "0.14", default-features = true }
+tonic-prost = "0.14"
+prost = "0.14"
+prost-types = "0.14"
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "net", "io-util"] }
+tower = { version = "0.5", features = ["util"] }
+hyper-util = { version = "0.1", features = ["tokio"] }
+thiserror = "2"
+
+[build-dependencies]
+tonic-prost-build = "0.14"
+
+[dev-dependencies]
+tempfile = "3"
+async-trait = "0.1"
+tokio-stream = { version = "0.1", features = ["net"] }
+
+[[example]]
+name = "dispatch"
+path = "examples/dispatch.rs"
+
+[[example]]
+name = "list_events"
+path = "examples/list_events.rs"
+
+[[example]]
+name = "parity_client"
+path = "examples/parity_client.rs"

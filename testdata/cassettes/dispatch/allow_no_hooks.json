@@ -1,0 +1,13 @@
+{
+  "name": "allow_no_hooks",
+  "description": "Envelope with no matching hooks returns allow",
+  "input": {
+    "event": "SessionStart",
+    "cli": {"name": "claude", "version": "1.0.0"},
+    "session": {"id": "test-123"},
+    "payload": {}
+  },
+  "expected": {
+    "action": "allow"
+  }
+}

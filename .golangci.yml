@@ -1,0 +1,8 @@
+version: "2"
+
+# Minimal baseline. nerv's lint policy is not yet defined; this file
+# exists so `make lint` runs cleanly under golangci-lint v2. Tighten
+# in a follow-up by mirroring a sibling hop-top tool (e.g. aps's
+# .golangci.yml).
+linters:
+  default: standard

@@ -1,0 +1,36 @@
+%% guardrails built-in — PreToolUse decision pipeline (v1)
+flowchart TD
+    A[PreToolUse envelope] --> B{tool == Bash?}
+    B -->|no| Z1[allow — pass through]
+    B -->|yes| C[load rule packs]
+    C --> D{any rule matches?}
+    D -->|no| Z1
+    D -->|yes| E{rule.mode}
+
+    E -->|allow| Z1
+    E -->|block| F[deny + reason]
+    E -->|rewrite| G[apply rewrite strategy]
+    G --> H{destructive?}
+    H -->|no| Z2[allow with rewrite]
+    H -->|yes| I[backup before exec]
+    I --> J{backup ok?}
+    J -->|no| F
+    J -->|yes| Z2
+
+    E -->|hitl| K[ask user via stderr]
+    K --> L{approved?}
+    L -->|no| F
+    L -->|yes| H
+
+    E -->|manager / peer-N| M[publish inbox_message_added]
+    M --> N[return deferred]
+    N --> O[(bus inbox)]
+    O --> P{N approvals OR timeout?}
+    P -->|approved| H
+    P -->|timeout / denied| F
+
+    style F fill:#f88,stroke:#c00,color:#000
+    style Z1 fill:#8f8,stroke:#080,color:#000
+    style Z2 fill:#8f8,stroke:#080,color:#000
+    style I fill:#fc8,stroke:#a60,color:#000
+    style M fill:#88f,stroke:#008,color:#fff

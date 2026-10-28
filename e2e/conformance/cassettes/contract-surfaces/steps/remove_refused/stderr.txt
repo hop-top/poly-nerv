@@ -1,0 +1,10 @@
+{
+  "code": "UNAUTHORIZED",
+  "message": "destructive command nerv remove refused: --confirm=no (or non-TTY default)",
+  "exit_code": 5
+}
+          
+   ERROR  
+          
+  Unauthorized: destructive command nerv remove refused: --confirm=no (or non-TTY default).                           
+

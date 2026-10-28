@@ -1,0 +1,18 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/hop-top/kit/main/contracts/story-schema.json
+schema_version: "1"
+story_id: nerv.daemon.status-triage
+title: Confirm the nerv daemon is running during triage
+binary: nerv
+intent: |
+  An operator triaging hooks that appear not to fire wants to confirm
+  whether nervd is actually running before investigating hook routing.
+  They run nerv daemon status and capture the result so the triage note
+  records the daemon state at the time of the incident.
+steps:
+  - id: daemon_status
+    intent: |
+      Check whether the nerv daemon is currently running. The operator
+      records the reported state and only proceeds to inspect hook
+      routing once the daemon is confirmed up.
+    invoke: ["nerv", "daemon", "status"]
+    capture: [exit_code, stdout, duration_ms]

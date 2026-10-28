@@ -1,0 +1,8 @@
+bin/
+/nerv
+/nervd
+vendor/
+
+# go.work.sum tracks transitive checksums for workspace-mode builds
+# only. Never relied upon by published modules.
+go.work.sum

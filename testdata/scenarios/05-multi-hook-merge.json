@@ -1,0 +1,34 @@
+{
+  "name": "multi-hook-merge",
+  "description": "Block wins over warn when multiple hooks fire",
+  "hooks": {
+    "version": "1.0-draft",
+    "hooks": [
+      {
+        "name": "warn-hook",
+        "on": "PreToolUse",
+        "match": "Bash",
+        "run": "./testdata/handlers/warn-always.sh"
+      },
+      {
+        "name": "block-hook",
+        "on": "PreToolUse",
+        "match": "Bash",
+        "run": "./testdata/handlers/block-always.sh"
+      }
+    ]
+  },
+  "envelope": {
+    "event": "PreToolUse",
+    "cli": {"name": "claude", "version": "1.0.0"},
+    "session": {"id": "test-multi-merge"},
+    "payload": {
+      "tool_name": "Bash",
+      "tool_input": {"command": "echo hi"}
+    }
+  },
+  "expected": {
+    "action": "block",
+    "message_contains": "blocked"
+  }
+}

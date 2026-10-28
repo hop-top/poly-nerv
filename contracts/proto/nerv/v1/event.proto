@@ -1,0 +1,133 @@
+syntax = "proto3";
+package nerv.v1;
+
+import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "hop.top/nerv/gen/go/nerv/v1;nervv1";
+
+// EventService exposes nerv's hot-path event dispatch surface.
+// v0.1: Dispatch (synchronous handler fan-out) + List (event catalog).
+service EventService {
+  // Dispatch runs the matched hook handlers for an envelope and
+  // returns the merged decision (block > rewrite > warn > allow).
+  rpc Dispatch(DispatchRequest) returns (DispatchResponse);
+  // List returns the static catalog of known events from spec/events.yaml.
+  rpc List(ListRequest) returns (ListResponse);
+}
+
+// Action is the handler decision per spec/handler-contract.md.
+enum Action {
+  ACTION_UNSPECIFIED = 0;
+  ACTION_ALLOW = 1;
+  ACTION_WARN = 2;
+  ACTION_BLOCK = 3;
+  ACTION_REWRITE = 4;
+}
+
+// SynthesisSource records how an envelope was synthesized when
+// synthesized = true. Empty when synthesized = false.
+enum SynthesisSource {
+  SYNTHESIS_SOURCE_UNSPECIFIED = 0;
+  SYNTHESIS_SOURCE_MATCHER = 1;
+  SYNTHESIS_SOURCE_DAEMON = 2;
+  SYNTHESIS_SOURCE_STATUS_DIFF = 3;
+  SYNTHESIS_SOURCE_BINARY_WRAP = 4;
+  SYNTHESIS_SOURCE_MCP_PROXY = 5;
+}
+
+// CLIInfo identifies the CLI that produced the event.
+message CLIInfo {
+  // CLI identifier (matches uxp.CLIName), e.g. "claude-code".
+  string name = 1;
+  // CLI version (semver).
+  string version = 2;
+  // Absolute path to the CLI binary on disk.
+  string binary_path = 3;
+}
+
+// SessionInfo carries session context for an event.
+message SessionInfo {
+  // Session identifier from the CLI.
+  string id = 1;
+  // Derived project key (from uxp.DeriveKey).
+  string project_key = 2;
+  // Working directory at time of event.
+  string cwd = 3;
+}
+
+// CapabilityRef references the adapter's capability map.
+message CapabilityRef {
+  // CLIName from the uxp registry.
+  string cli = 1;
+  // Semver range this capability map covers.
+  string cli_version_range = 2;
+}
+
+// Envelope is the wire format for all nerv hook events. Mirrors
+// internal/envelope.Envelope; field names match spec/envelope.schema.json.
+message Envelope {
+  // Nerv protocol version (semver), e.g. "1.0.0-draft".
+  string nerv_version = 1;
+  // Event name from spec/events.yaml (e.g. "PreToolUse").
+  string event = 2;
+  // Unique event identifier (UUID v4).
+  string event_id = 3;
+  // Event timestamp.
+  google.protobuf.Timestamp timestamp = 4;
+  CLIInfo cli = 5;
+  SessionInfo session = 6;
+  // Event-specific payload; shape varies per event.
+  google.protobuf.Struct payload = 7;
+  // True if synthesized by the adapter rather than natively emitted.
+  bool synthesized = 8;
+  // Synthesis technique; unspecified when synthesized = false.
+  SynthesisSource synthesis_source = 9;
+  // Reference to the adapter's capability map; null/absent if N/A.
+  CapabilityRef capabilities = 10;
+}
+
+// Decision is a single handler's verdict; the dispatcher merges N of
+// these into one final response per merger.Merge semantics.
+message Decision {
+  Action action = 1;
+  string message = 2;
+  // Rewrite payload; shape is event-specific (e.g. tool input edit).
+  google.protobuf.Struct rewrite = 3;
+  // Free-form metadata bag, merged across handlers (last-write-wins
+  // per key in the current Go merger).
+  google.protobuf.Struct metadata = 4;
+}
+
+// DispatchRequest carries a single envelope into the hot-path
+// dispatcher.
+message DispatchRequest {
+  Envelope envelope = 1;
+}
+
+// DispatchResponse returns the merged decision for the envelope.
+message DispatchResponse {
+  Decision decision = 1;
+}
+
+// EventDescriptor describes one known event from the static catalog.
+message EventDescriptor {
+  // Event name, e.g. "PreToolUse".
+  string name = 1;
+  // Category from spec/events.yaml (session, tool, etc.).
+  string category = 2;
+  // Origin: "native", "derived", or "extension".
+  string origin = 3;
+  // True if the event allows handlers to block.
+  bool blocking = 4;
+  // Source CLI for extension-origin events; empty otherwise.
+  string extension_source = 5;
+}
+
+// ListRequest fetches the event catalog. No filters in v0.1.
+message ListRequest {}
+
+// ListResponse returns every known event.
+message ListResponse {
+  repeated EventDescriptor events = 1;
+}

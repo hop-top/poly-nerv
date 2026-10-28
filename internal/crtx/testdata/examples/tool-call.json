@@ -1,0 +1,54 @@
+{
+  "crtx_version": "0.1",
+  "id": "01JCRTX0EXAMPLETOOLCALL0001",
+  "created_at": "2026-05-28T14:05:00Z",
+  "updated_at": "2026-05-28T14:05:03Z",
+  "source": {
+    "kind": "stem",
+    "version": "0.1.0",
+    "instance": "host-laptop/pid-4711"
+  },
+  "turns": [
+    {
+      "id": "01JCRTX0TURN0010",
+      "role": "user",
+      "created_at": "2026-05-28T14:05:00Z",
+      "content": [
+        { "type": "text", "text": "What's the weather in Tokyo?" }
+      ]
+    },
+    {
+      "id": "01JCRTX0TURN0011",
+      "role": "assistant",
+      "created_at": "2026-05-28T14:05:01Z",
+      "content": [
+        {
+          "type": "tool_call",
+          "call_id": "call_abc123",
+          "name": "weather",
+          "input": { "city": "Tokyo", "units": "metric" }
+        }
+      ]
+    },
+    {
+      "id": "01JCRTX0TURN0012",
+      "role": "tool",
+      "created_at": "2026-05-28T14:05:02Z",
+      "content": [
+        {
+          "type": "tool_result",
+          "call_id": "call_abc123",
+          "output": { "temp_c": 18, "summary": "partly cloudy" }
+        }
+      ]
+    },
+    {
+      "id": "01JCRTX0TURN0013",
+      "role": "assistant",
+      "created_at": "2026-05-28T14:05:03Z",
+      "content": [
+        { "type": "text", "text": "It's 18°C and partly cloudy in Tokyo right now." }
+      ]
+    }
+  ]
+}

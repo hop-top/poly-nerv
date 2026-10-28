@@ -1,0 +1,51 @@
+# Format: <rule-id>\t<command>
+# Each line MUST match the named rule. Used by guardrails_test.go.
+# Lines starting with # or blank are skipped.
+
+# git-no-verify
+git-no-verify	git commit --no-verify -m "wip"
+git-no-verify	git commit -m "wip" --no-verify
+git-no-verify	git -c user.email=x commit --no-verify -m "x"
+git-no-verify	cd /tmp && git commit --no-verify -am 'x'
+
+# git-config-githooks-disable
+git-config-githooks-disable	git config githooks.disable true
+git-config-githooks-disable	git config --global githooks.disable yes
+git-config-githooks-disable	git config githooks.skipUntrustedHooks 1
+git-config-githooks-disable	git config --local githooks.skipUntrustedHooks true
+
+# git-add-all
+git-add-all	git add .
+git-add-all	git add -A
+git-add-all	git add --all
+git-add-all	cd src && git add . ;
+git-add-all	git add . | tee log
+
+# git-push-force
+git-push-force	git push --force origin feat/x
+git-push-force	git push origin feat/x --force
+git-push-force	git push --force
+git-push-force	git -C /tmp/repo push --force origin user/jadb/wip
+
+# git-push-force-protected
+git-push-force-protected	git push --force origin main
+git-push-force-protected	git push --force-with-lease origin master
+git-push-force-protected	git push --force origin trunk
+git-push-force-protected	git push --force-with-lease origin release-2026-04
+git-push-force-protected	git push --force origin release
+
+# git-reset-hard
+git-reset-hard	git reset --hard
+git-reset-hard	git reset --hard HEAD
+git-reset-hard	git reset --hard origin/main
+git-reset-hard	cd repo && git reset --hard HEAD~3
+
+# git-clean-fd
+git-clean-fd	git clean -fd
+git-clean-fd	git clean -fdx
+git-clean-fd	git clean -df
+git-clean-fd	git clean -xfd
+
+# git-filter-branch
+git-filter-branch	git filter-branch --force --index-filter '...' HEAD
+git-filter-branch	git filter-repo --path secrets/ --invert-paths

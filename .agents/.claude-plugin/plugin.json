@@ -1,0 +1,11 @@
+{
+  "name": "nerv",
+  "version": "0.1.0-alpha.0",
+  "description": "Universal Hooks Protocol — write hooks once, run them on every AI coding CLI. Manage hooks across Claude Code, Codex, Gemini, OpenCode, OpenHands, Aider, Goose, and Vibe.",
+  "author": {
+    "name": "hop-top",
+    "url": "https://hop.top/nerv"
+  },
+  "repository": "https://github.com/hop-top/poly-nerv",
+  "license": "MIT"
+}

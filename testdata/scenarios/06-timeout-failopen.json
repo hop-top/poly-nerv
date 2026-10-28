@@ -1,0 +1,30 @@
+{
+  "name": "timeout-failopen",
+  "description": "Handler times out; fail-open yields allow",
+  "hooks": {
+    "version": "1.0-draft",
+    "defaults": {"timeout": 1},
+    "hooks": [
+      {
+        "name": "slow-hook",
+        "on": "PreToolUse",
+        "match": "Bash",
+        "run": "./testdata/handlers/slow-handler.sh",
+        "timeout": 1
+      }
+    ]
+  },
+  "envelope": {
+    "event": "PreToolUse",
+    "cli": {"name": "claude", "version": "1.0.0"},
+    "session": {"id": "test-timeout"},
+    "payload": {
+      "tool_name": "Bash",
+      "tool_input": {"command": "echo hello"}
+    }
+  },
+  "expected": {
+    "action": "allow",
+    "metadata_contains": {"failopen_reason": "timeout"}
+  }
+}

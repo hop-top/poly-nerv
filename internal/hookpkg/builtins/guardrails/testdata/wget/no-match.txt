@@ -1,0 +1,5 @@
+wget https://example.com/file -O file
+wget -O install.sh https://example.com/x.sh
+wget --content-on-error https://example.com/x
+wget -qO- https://example.com/x.sh > install.sh
+echo "wget | sh patterns are dangerous"

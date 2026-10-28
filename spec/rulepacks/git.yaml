@@ -1,0 +1,145 @@
+# Rule pack: git
+# Schema: rulepack.schema.json
+#
+# Block / rewrite / escalate dangerous git operations on PreToolUse.
+# Rules are evaluated in order; first match wins per pack.
+#
+# Severity is informational only in v1 (does not gate behavior).
+# default_mode is the out-of-box behavior; users override per-rule via
+# hooks.yaml → builtin.guardrails.rules.<id>.mode.
+
+name: git
+version: 1
+description: Block / rewrite destructive git operations.
+applies_to:
+  tool: Bash
+
+rules:
+  # ── Hook bypass ────────────────────────────────────────────────────
+  - id: git-no-verify
+    description: --no-verify skips commit hooks
+    severity: high
+    pattern: '\bgit\b[^|;]*\bcommit\b[^|;]*--no-verify'
+    default_mode: block
+    rewrites:
+      - strategy: strip_flag
+        flag: --no-verify
+    reason: |
+      The --no-verify flag bypasses commit hooks. Hooks exist for a
+      reason (lint, format, signing, secret scanning). If a hook is
+      failing, investigate and fix the underlying issue. If a hook is
+      genuinely broken, fix the hook — do not skip it.
+
+      Override (one-time, only if you know what you are doing):
+        hooks.yaml → builtin.guardrails.rules.git-no-verify.mode: allow
+
+  - id: git-config-githooks-disable
+    description: githooks.{disable,skipUntrustedHooks} via git config
+    severity: high
+    pattern: '\bgit\b[^|;]*\bconfig\b[^|;]*\bgithooks\.(disable|skipUntrustedHooks)\b'
+    default_mode: block
+    reason: |
+      Setting githooks.disable or githooks.skipUntrustedHooks turns
+      off your repository's hook policy. If a hook is untrusted,
+      review the hook source and trust the namespace explicitly:
+
+        git hooks trust hooks --pattern 'ns:<namespace>/**'
+
+  # ── Staging hygiene ────────────────────────────────────────────────
+  - id: git-add-all
+    description: git add . / -A / --all stages unrelated files
+    severity: medium
+    pattern: '\bgit\b\s+add\s+(\.|(-A|--all))(\s|$|;|\|)'
+    default_mode: block
+    reason: |
+      'git add .', 'git add -A', and 'git add --all' stage every
+      modified file in the working tree, including unrelated changes,
+      generated artifacts, and accidental edits. This is a frequent
+      source of polluted commits.
+
+      Instead: 'git status' to review, then 'git add file1 file2 ...'
+      with explicit paths. For interactive selection: 'git add -p'.
+
+  # ── Force-push hygiene ─────────────────────────────────────────────
+  # NOTE: protected-branch rule MUST come before the generic --force
+  # rule. First-match-wins per pack; if generic ran first, push to
+  # main would only get rewrite, not block.
+  - id: git-push-force-protected
+    description: force-push to main / master / trunk / release branches
+    severity: high
+    pattern: '\bgit\b[^|;]*\bpush\b[^|;]*\s--force(-with-lease)?\b[^|;]*\s(main|master|trunk|release|release-[a-z0-9.-]+)(\s|$|;|\|)'
+    default_mode: block
+    reason: |
+      Force-pushing to main / master / trunk / release-* is destructive
+      to shared history. Even --force-with-lease cannot recover a
+      branch that other clones have already pulled.
+
+      If you genuinely need to rewrite shared history, coordinate with
+      the team first and override this rule explicitly:
+        hooks.yaml → builtin.guardrails.rules.git-push-force-protected.mode: hitl
+
+  - id: git-push-force
+    description: force-push without lease
+    severity: high
+    pattern: '\bgit\b[^|;]*\bpush\b[^|;]*\s--force(\s|$)'
+    default_mode: rewrite
+    rewrites:
+      - strategy: replace_token
+        from: --force
+        to: --force-with-lease
+    reason: |
+      'git push --force' overwrites the remote tip without checking
+      whether new commits arrived since you fetched. If a teammate
+      pushed in between, their work is silently lost.
+
+      Default: rewrite to --force-with-lease, which fails the push if
+      the remote moved. Same intent, no risk of losing teammate work.
+
+  # ── Working-tree destruction ───────────────────────────────────────
+  - id: git-reset-hard
+    description: git reset --hard discards uncommitted work
+    severity: high
+    pattern: '\bgit\b\s+reset\b[^|;]*--hard'
+    default_mode: hitl
+    destructive: true
+    backup_strategy: git_stash_full
+    reason: |
+      'git reset --hard' discards all uncommitted changes in the
+      working tree and index. There is no undo.
+
+      Default: ask first, and stash + archive working tree before
+      proceeding. To skip the prompt entirely:
+        hooks.yaml → builtin.guardrails.rules.git-reset-hard.mode: rewrite
+      (Note: rewrite is not implemented for this rule; allow-with-backup
+      via .mode: allow is also available if you understand the risk.)
+
+  - id: git-clean-fd
+    description: git clean -fd / -fdx deletes untracked files
+    severity: high
+    pattern: '\bgit\b\s+clean\b[^|;]*\s-([a-z]*f[a-z]*d|[a-z]*d[a-z]*f)[a-z]*'
+    default_mode: hitl
+    destructive: true
+    backup_strategy: git_untracked
+    reason: |
+      'git clean -fd' deletes untracked files and directories. With -x
+      it also deletes ignored files (e.g. node_modules, .env). There
+      is no undo, and accidentally-deleted .env files mean
+      reconfiguring local state.
+
+      Default: ask first, archive untracked files before proceeding.
+
+  # ── History rewrites ───────────────────────────────────────────────
+  - id: git-filter-branch
+    description: git filter-branch / git filter-repo rewrites history
+    severity: high
+    pattern: '\bgit\b\s+filter-(branch|repo)\b'
+    default_mode: block
+    reason: |
+      'git filter-branch' and 'git filter-repo' rewrite project
+      history. Used carelessly on a shared branch they orphan every
+      teammate's local clone and break every existing PR.
+
+      If you genuinely need to rewrite history (e.g. removing a
+      committed secret), do it on a fresh clone, coordinate with the
+      team, and override this rule explicitly. Do not run it from an
+      AI agent harness.

@@ -1,0 +1,53 @@
+# Service-tier conformance grading (F3-F8, F11) for the recorded
+# cassettes under e2e/conformance/. Dispatch-only and non-blocking:
+# grading is measurement, and several factors currently fail honestly
+# (see e2e/conformance/README.md). This workflow never gates PRs.
+#
+# The grader ships in the `kit` binary's `conformance` command group.
+# Supply a ref that resolves for `go install hop.top/kit/cmd/kit`; the
+# default tracks the latest published prerelease line.
+name: 12fcc grade
+
+on:
+  workflow_dispatch:
+    inputs:
+      kit-ref:
+        description: hop.top/kit ref to build the grader from
+        required: false
+        default: latest
+      strict:
+        description: fail the run when any verdict is fail (1 = yes)
+        required: false
+        default: "0"
+
+permissions:
+  contents: read
+
+jobs:
+  grade:
+    name: grade recorded cassettes (tier 3)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+
+      - name: Install grader
+        env:
+          KIT_REF: ${{ inputs.kit-ref }}
+        run: go install "hop.top/kit/cmd/kit@${KIT_REF}"
+
+      - name: Grade cassettes
+        env:
+          KIT_BIN: kit
+          STRICT: ${{ inputs.strict }}
+        run: make 12fcc-grade
+
+      - name: Upload verdicts
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: 12fcc-verdicts
+          path: e2e/conformance/verdicts/

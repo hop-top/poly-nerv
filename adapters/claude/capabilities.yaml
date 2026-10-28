@@ -1,0 +1,39 @@
+# Claude Code adapter capabilities.
+# Reference CLI — all 26 core nerv events are native.
+
+cli: claude
+cli_version_range: ">=1.0.0"
+
+native:
+  - SessionStart
+  - SessionEnd
+  - UserPromptSubmit
+  - PreToolUse
+  - PostToolUse
+  - PostToolUseFailure
+  - PermissionRequest
+  - PermissionDenied
+  - Notification
+  - SubagentStart
+  - SubagentStop
+  - TaskCreated
+  - TaskCompleted
+  - Stop
+  - StopFailure
+  - TeammateIdle
+  - InstructionsLoaded
+  - ConfigChange
+  - CwdChanged
+  - FileChanged
+  - WorktreeCreate
+  - WorktreeRemove
+  - PreCompact
+  - PostCompact
+  - Elicitation
+  - ElicitationResult
+
+synthesized: {}
+
+unsupported: []
+
+close: []

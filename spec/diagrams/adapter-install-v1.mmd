@@ -1,0 +1,42 @@
+%% Nerv Adapter Install Sequence
+%%
+%% Atomic install with rollback on hash mismatch.
+
+sequenceDiagram
+    participant User
+    participant Nerv as nerv install
+    participant CLI as Target CLI
+    participant FS as Filesystem
+
+    User->>Nerv: nerv install {cli}
+    Nerv->>CLI: detect version
+    CLI-->>Nerv: version string
+
+    Nerv->>FS: read existing configs
+    FS-->>Nerv: current config state
+
+    Nerv->>Nerv: compute merged config
+    Nerv->>Nerv: compute diff (current vs desired)
+    Nerv->>User: dry-run preview
+
+    User->>Nerv: confirm
+
+    Nerv->>FS: acquire flock
+    FS-->>Nerv: lock acquired
+
+    Nerv->>FS: backup current config
+    FS-->>Nerv: backup path
+
+    Nerv->>FS: atomic write new config
+    Nerv->>FS: verify written hash
+    FS-->>Nerv: hash result
+
+    alt hash matches expected
+        Nerv->>FS: record install metadata
+        Nerv->>FS: release flock
+        Nerv->>User: success
+    else hash mismatch
+        Nerv->>FS: restore from backup
+        Nerv->>FS: release flock
+        Nerv->>User: error — rolled back
+    end

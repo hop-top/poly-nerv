@@ -1,0 +1,27 @@
+# Rule pack: sudo
+# Schema: rulepack.schema.json
+#
+# Catch sudo'd variants of the highest-blast operations + system
+# control verbs that have no recovery path.
+
+name: sudo
+version: 1
+description: Block sudo'd system-control verbs not covered by other packs.
+applies_to:
+  tool: Bash
+
+rules:
+  # NOTE: 'sudo rm -rf' is NOT a separate rule — the rm pack already
+  # matches \brm\b regardless of a leading sudo. Same for 'sudo curl
+  # | sh' (curl pack) and 'sudo wget | sh' (wget pack). This pack
+  # only adds rules with no non-sudo equivalent.
+
+  - id: sudo-shutdown
+    description: sudo shutdown / reboot / halt / poweroff
+    severity: high
+    pattern: '\bsudo\b[^|;]*\b(shutdown|reboot|halt|poweroff)\b'
+    default_mode: block
+    reason: |
+      Shutting down or rebooting the host destroys session state for
+      every running process. If you genuinely need to restart, do it
+      yourself — not from an AI agent harness.

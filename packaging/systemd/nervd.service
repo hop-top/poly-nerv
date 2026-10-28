@@ -1,0 +1,14 @@
+[Unit]
+Description=nerv Daemon — Universal Hooks Protocol dispatcher
+Documentation=https://hop.top/nerv
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=%h/.local/bin/nervd
+Environment=NERV_SOCKET=%t/nerv.sock
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target

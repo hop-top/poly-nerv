@@ -1,0 +1,23 @@
+{
+  "name": "session-start-notify",
+  "description": "SessionStart fires notification handler; passthrough allow",
+  "hooks": {
+    "version": "1.0-draft",
+    "hooks": [
+      {
+        "name": "session-notify",
+        "on": "SessionStart",
+        "run": "./testdata/handlers/notify-session.sh"
+      }
+    ]
+  },
+  "envelope": {
+    "event": "SessionStart",
+    "cli": {"name": "claude", "version": "1.0.0"},
+    "session": {"id": "test-session-start"},
+    "payload": {}
+  },
+  "expected": {
+    "action": "allow"
+  }
+}

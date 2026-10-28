@@ -1,0 +1,27 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/hop-top/kit/main/contracts/story-schema.json
+schema_version: "1"
+story_id: nerv.bindings.disable-single-binding
+title: Detach one hook from one event without disabling the hook
+binary: nerv
+intent: |
+  A platform engineer finds a hook is correct on most events but wrong
+  on one of them. Rather than disabling the whole hook, they disable the
+  single hook-by-event binding, leaving every other binding of that hook
+  live. The reverse enable restores the binding so the change can be
+  rolled back cleanly.
+preconditions:
+  - a hooks.yaml is discoverable from the working directory
+  - a hook named open-questions is bound to the PreToolUse event
+steps:
+  - id: disable_binding
+    intent: |
+      Detach the named hook from the single event it should stop
+      handling, leaving that hook's other event bindings untouched.
+    invoke: ["nerv", "disable", "bindings", "open-questions:PreToolUse"]
+    capture: [exit_code, stdout, stderr]
+  - id: enable_binding
+    intent: |
+      Reattach the same hook-by-event binding so the configuration is
+      restored to its prior state and the change is proven reversible.
+    invoke: ["nerv", "enable", "bindings", "open-questions:PreToolUse"]
+    capture: [exit_code, stdout, stderr]

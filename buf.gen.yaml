@@ -1,0 +1,35 @@
+version: v2
+managed:
+  enabled: true
+plugins:
+  # Go server + SDK — neutral location consumed by both root module
+  # (hop.top/nerv) and SDK module (hop.top/nerv/sdk/go).
+  - remote: buf.build/protocolbuffers/go
+    out: gen/go
+    opt: paths=source_relative
+  - remote: buf.build/connectrpc/go
+    out: gen/go
+    opt: paths=source_relative
+  # TypeScript SDK — connect-es v2: service descriptors live in _pb.ts (no _connect.ts)
+  - remote: buf.build/bufbuild/es
+    out: sdk/ts/src/gen
+    opt: target=ts
+  # Python SDK
+  - remote: buf.build/protocolbuffers/python
+    out: sdk/py/src/hop_top_nerv/gen
+  - remote: buf.build/grpc/python
+    out: sdk/py/src/hop_top_nerv/gen
+  # Rust SDK — handled by build.rs (tonic-build); buf does not run prost here.
+  # PHP SDK
+  - remote: buf.build/protocolbuffers/php
+    out: sdk/php/src/Gen
+  # PHP gRPC client stubs (EventServiceClient). The plugin binary is
+  # named `grpc_php_plugin` and ships in grpc.io's grpc/grpc repo —
+  # NOT on BSR. Install locally via `brew install grpc` (macOS) or
+  # build from source per grpc.io PHP install docs:
+  # `cd grpc/src/compiler && make grpc_php_plugin`.
+  # CI never runs buf generate — the generated stubs are committed.
+  - local: grpc_php_plugin
+    out: sdk/php/src/Gen
+inputs:
+  - directory: contracts/proto

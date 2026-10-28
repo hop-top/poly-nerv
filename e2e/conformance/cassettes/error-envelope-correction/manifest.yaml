@@ -1,0 +1,22 @@
+schema_version: "1"
+binary: nerv
+binary_version: b761442
+recorder: xrr
+recorder_version: 0.0.0-manual
+recorded_at: 2026-08-08T20:02:44Z
+scenario_id: nerv/error-envelope-correction
+scenario_version: 1.0.0
+story_ref:
+  story_id: nerv.conformance.error-envelope-correction
+  story_path: story.yaml
+  content_hash: sha256:277eb5f863a38a94fc501f9c1259a1fccd206c560c08b019696ba00303cfdfa4
+steps:
+  - id: replay_missing
+    cassette_dir: steps/replay_missing/cassette
+    captures: steps/replay_missing
+  - id: unknown_flag
+    cassette_dir: steps/unknown_flag/cassette
+    captures: steps/unknown_flag
+  - id: unknown_command
+    cassette_dir: steps/unknown_command/cassette
+    captures: steps/unknown_command

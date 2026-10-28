@@ -1,0 +1,21 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/hop-top/kit/main/contracts/story-schema.json
+schema_version: "1"
+story_id: nerv.replay.recent-recorded-events
+title: Replay recorded events through the hook pipeline
+binary: nerv
+intent: |
+  A developer who has just changed hook logic wants to know how the new
+  code would have decided on traffic that already happened. They replay
+  the most recent recorded events back through the hook pipeline and
+  compare the decisions against what was originally recorded, which
+  gives a regression check without waiting for fresh agent traffic.
+preconditions:
+  - the nerv event log contains at least one recorded entry
+steps:
+  - id: replay_recent
+    intent: |
+      Push the last handful of recorded events back through the hook
+      pipeline and print the decision each one produces under the
+      current hook configuration.
+    invoke: ["nerv", "replay", "--last", "10"]
+    capture: [exit_code, stdout, stderr]

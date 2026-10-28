@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "nerv-sdk"
+version = "0.1.0-alpha.0"
+description = "Python SDK for nerv — Universal Hooks Protocol"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.11"
+dependencies = [
+    "grpcio>=1.60",
+    "protobuf>=7.35",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7",
+    "ruff>=0.6",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["hop_top_nerv*"]
+
+[tool.ruff]
+line-length = 100
+extend-exclude = ["src/hop_top_nerv/gen"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

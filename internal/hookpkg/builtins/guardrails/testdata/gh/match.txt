@@ -1,0 +1,4 @@
+gh-merge-admin	gh pr merge --admin
+gh-merge-admin	gh pr merge 123 --admin
+gh-merge-admin	gh pr merge --admin --squash
+gh-merge-admin	gh pr merge --squash --admin 456

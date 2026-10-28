@@ -1,0 +1,28 @@
+{
+  "name": "crash-failopen",
+  "description": "Handler exits 4 (crash); fail-open yields allow",
+  "hooks": {
+    "version": "1.0-draft",
+    "hooks": [
+      {
+        "name": "crash-hook",
+        "on": "PreToolUse",
+        "match": "Bash",
+        "run": "./testdata/handlers/crash-handler.sh"
+      }
+    ]
+  },
+  "envelope": {
+    "event": "PreToolUse",
+    "cli": {"name": "claude", "version": "1.0.0"},
+    "session": {"id": "test-crash"},
+    "payload": {
+      "tool_name": "Bash",
+      "tool_input": {"command": "echo safe"}
+    }
+  },
+  "expected": {
+    "action": "allow",
+    "metadata_contains": {"failopen_reason": "handler_error"}
+  }
+}

@@ -1,0 +1,49 @@
+schema_version: "1"
+scenario_id: contract-surfaces
+description: >-
+  Declared contracts must hold: the destructive gate refuses without
+  confirmation and the refusal envelope's declared exit code matches
+  the process exit code; the binary serves a machine-readable
+  capability listing; a pinned schema version is honored.
+binary: nerv
+factor_coverage: [5, 11]
+tier: 3
+story_ref:
+  story_id: nerv.conformance.contract-surfaces
+  story_path: stories/contract-surfaces.yaml
+  content_hash: "sha256:3c1877f8094a3aebe05f2e0adf5ffbd558009b203f883a8750ece6a8ceeb8815"
+steps:
+  - id: remove_refused
+    invoke: ["nerv", "remove", "demo-hook", "--format", "json"]
+    capture: [exit_code, stdout, stderr]
+  - id: capabilities_probe
+    invoke: ["nerv", "capabilities", "--format", "json"]
+    capture: [exit_code, stdout, stderr]
+  - id: api_version_ok
+    invoke: ["nerv", "status", "--api-version", "1.0", "--format", "json"]
+    capture: [exit_code, stdout, stderr]
+assertions:
+  - id: destructive-gate-enforced
+    kind: stderr_contains
+    on: remove_refused
+    factor: 5
+    value: "refused"
+  - id: refusal-declares-exit-code
+    kind: stderr_contains
+    on: remove_refused
+    factor: 5
+    value: '"exit_code": 5'
+  - id: declared-exit-code-honored
+    kind: exit_code_equals
+    on: remove_refused
+    factor: 11
+    value: 5
+  - id: capabilities-machine-readable
+    kind: capability_roundtrip
+    on: capabilities_probe
+    factor: 5
+  - id: api-version-pin-honored
+    kind: exit_code_equals
+    on: api_version_ok
+    factor: 5
+    value: 0

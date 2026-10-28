@@ -1,0 +1,10 @@
+name: my-hook
+version: "1.0.0"
+description: A template nerv hook — replace with your description
+author: your-name
+license: MIT
+events:
+  - PreToolUse
+requires:
+  capabilities: []
+  nerv_version: ">=1.0.0"

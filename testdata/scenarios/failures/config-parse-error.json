@@ -1,0 +1,18 @@
+{
+  "name": "config_parse_error",
+  "description": "hooks.yaml has invalid YAML — skip layer, allow",
+  "input": {
+    "event": "PreToolUse",
+    "cli": {"name": "claude", "version": "1.0.0"},
+    "session": {"id": "fail-config-001"},
+    "payload": {
+      "tool": "bash",
+      "input": {"command": "pwd"}
+    },
+    "hooks_yaml": "invalid: yaml: [broken\n  - not: valid"
+  },
+  "expected": {
+    "action": "allow",
+    "reason": "config parse error: skipping layer"
+  }
+}

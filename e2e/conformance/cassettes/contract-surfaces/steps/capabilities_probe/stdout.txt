@@ -1,0 +1,408 @@
+{
+  "tool": "nerv",
+  "version": "dev",
+  "schema_version": "1.0",
+  "leaves": [
+    {
+      "path": "nerv add",
+      "name": "add",
+      "short": "Add a hook to the project",
+      "side_effect": "write",
+      "idempotent": "no",
+      "dry_run_supported": true,
+      "flags": [
+        {
+          "name": "source",
+          "type": "string",
+          "description": "URL or local path to hook handler (default: hop.top/nerv/hooks/\u003cname\u003e)"
+        }
+      ]
+    },
+    {
+      "path": "nerv capabilities",
+      "name": "capabilities",
+      "short": "Emit the machine-readable command surface",
+      "side_effect": "read",
+      "idempotent": "yes",
+      "dry_run_supported": false,
+      "flags": [
+        {
+          "name": "help",
+          "short": "h",
+          "type": "bool",
+          "description": "help for capabilities",
+          "default": "false"
+        }
+      ]
+    },
+    {
+      "path": "nerv create",
+      "name": "create",
+      "short": "Generate a hook from a natural-language intent",
+      "side_effect": "write-local",
+      "idempotent": "no",
+      "dry_run_supported": true,
+      "flags": [
+        {
+          "name": "allow-untrusted",
+          "type": "bool",
+          "description": "Commit the LLM-generated handler to disk after auditing the printed script. Required for any non-dry-run write — acknowledges that the script will execute as your user.",
+          "default": "false"
+        },
+        {
+          "name": "dry-run",
+          "type": "bool",
+          "description": "Print artifacts without writing them",
+          "default": "false"
+        },
+        {
+          "name": "events",
+          "type": "stringSlice",
+          "description": "Override inferred event subscription (comma-separated)",
+          "default": "[]"
+        },
+        {
+          "name": "lang",
+          "type": "string",
+          "description": "Handler language: sh | py",
+          "default": "sh"
+        },
+        {
+          "name": "llm-provider",
+          "type": "string",
+          "description": "LLM provider URI (default from $LLM_PROVIDER or llm.yaml); API keys MUST come from env (ANTHROPIC_API_KEY, OPENAI_API_KEY, ...) or llm.yaml — never via ?api_key=... query params (visible in ps + history)"
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "description": "Override the derived hook name"
+        }
+      ]
+    },
+    {
+      "path": "nerv daemon reload",
+      "name": "reload",
+      "short": "Hot-reload hooks.yaml (sends SIGHUP to daemon)",
+      "side_effect": "write",
+      "idempotent": "yes",
+      "dry_run_supported": true
+    },
+    {
+      "path": "nerv daemon start",
+      "name": "start",
+      "short": "Start nervd in the background",
+      "side_effect": "interactive",
+      "idempotent": "no",
+      "dry_run_supported": false
+    },
+    {
+      "path": "nerv daemon status",
+      "name": "status",
+      "short": "Check daemon status",
+      "side_effect": "read",
+      "idempotent": "yes",
+      "dry_run_supported": false
+    },
+    {
+      "path": "nerv daemon stop",
+      "name": "stop",
+      "short": "Stop the running nervd daemon",
+      "side_effect": "destructive",
+      "idempotent": "yes",
+      "dry_run_supported": true
+    },
+    {
+      "path": "nerv disable bindings",
+      "name": "bindings",
+      "short": "Disable one or more hook×event bindings",
+      "side_effect": "write-local",
+      "idempotent": "conditional",
+      "dry_run_supported": true,
+      "flags": [
+        {
+          "name": "idempotency-key",
+          "type": "string",
+          "description": "Idempotency key for replay. Same key + same tool replays the recorded output."
+        },
+        {
+          "name": "no-confirm",
+          "type": "bool",
+          "description": "skip the interactive y/N prompt; required for non-TTY use",
+          "default": "false"
+        }
+      ]
+    },
+    {
+      "path": "nerv disable events",
+      "name": "events",
+      "short": "Disable one or more events",
+      "side_effect": "write-local",
+      "idempotent": "conditional",
+      "dry_run_supported": true,
+      "flags": [
+        {
+          "name": "idempotency-key",
+          "type": "string",
+          "description": "Idempotency key for replay. Same key + same tool replays the recorded output."
+        },
+        {
+          "name": "no-confirm",
+          "type": "bool",
+          "description": "skip the interactive y/N prompt; required for non-TTY use",
+          "default": "false"
+        }
+      ]
+    },
+    {
+      "path": "nerv disable hooks",
+      "name": "hooks",
+      "short": "Disable one or more hooks by name",
+      "side_effect": "write-local",
+      "idempotent": "conditional",
+      "dry_run_supported": true,
+      "flags": [
+        {
+          "name": "idempotency-key",
+          "type": "string",
+          "description": "Idempotency key for replay. Same key + same tool replays the recorded output."
+        },
+        {
+          "name": "no-confirm",
+          "type": "bool",
+          "description": "skip the interactive y/N prompt; required for non-TTY use",
+          "default": "false"
+        }
+      ]
+    },
+    {
+      "path": "nerv doctor",
+      "name": "doctor",
+      "short": "Check nerv installation health",
+      "side_effect": "read",
+      "idempotent": "yes",
+      "dry_run_supported": false
+    },
+    {
+      "path": "nerv enable bindings",
+      "name": "bindings",
+      "short": "Enable one or more hook×event bindings",
+      "side_effect": "write-local",
+      "idempotent": "conditional",
+      "dry_run_supported": true,
+      "flags": [
+        {
+          "name": "idempotency-key",
+          "type": "string",
+          "description": "Idempotency key for replay. Same key + same tool replays the recorded output."
+        },
+        {
+          "name": "no-confirm",
+          "type": "bool",
+          "description": "skip the interactive y/N prompt; required for non-TTY use",
+          "default": "false"
+        }
+      ]
+    },
+    {
+      "path": "nerv enable events",
+      "name": "events",
+      "short": "Enable one or more events",
+      "side_effect": "write-local",
+      "idempotent": "conditional",
+      "dry_run_supported": true,
+      "flags": [
+        {
+          "name": "idempotency-key",
+          "type": "string",
+          "description": "Idempotency key for replay. Same key + same tool replays the recorded output."
+        },
+        {
+          "name": "no-confirm",
+          "type": "bool",
+          "description": "skip the interactive y/N prompt; required for non-TTY use",
+          "default": "false"
+        }
+      ]
+    },
+    {
+      "path": "nerv enable hooks",
+      "name": "hooks",
+      "short": "Enable one or more hooks by name",
+      "side_effect": "write-local",
+      "idempotent": "conditional",
+      "dry_run_supported": true,
+      "flags": [
+        {
+          "name": "idempotency-key",
+          "type": "string",
+          "description": "Idempotency key for replay. Same key + same tool replays the recorded output."
+        },
+        {
+          "name": "no-confirm",
+          "type": "bool",
+          "description": "skip the interactive y/N prompt; required for non-TTY use",
+          "default": "false"
+        }
+      ]
+    },
+    {
+      "path": "nerv inbox list",
+      "name": "list",
+      "short": "List delivered inbox messages, newest first",
+      "side_effect": "read",
+      "idempotent": "yes",
+      "dry_run_supported": false
+    },
+    {
+      "path": "nerv inbox show",
+      "name": "show",
+      "short": "Show one inbox message in full",
+      "side_effect": "read",
+      "idempotent": "yes",
+      "dry_run_supported": false
+    },
+    {
+      "path": "nerv install add",
+      "name": "add",
+      "short": "Install the nerv adapter for an AI CLI",
+      "side_effect": "write",
+      "idempotent": "yes",
+      "dry_run_supported": true,
+      "flags": [
+        {
+          "name": "dry-run",
+          "type": "bool",
+          "description": "Preview the merge without writing config or journaling",
+          "default": "false"
+        }
+      ]
+    },
+    {
+      "path": "nerv install status",
+      "name": "status",
+      "short": "Show adapter installation state for known AI CLIs",
+      "side_effect": "read",
+      "idempotent": "yes",
+      "dry_run_supported": false
+    },
+    {
+      "path": "nerv lint",
+      "name": "lint",
+      "short": "Lint hooks.yaml for errors and warnings",
+      "side_effect": "read",
+      "idempotent": "yes",
+      "dry_run_supported": false
+    },
+    {
+      "path": "nerv remove",
+      "name": "remove",
+      "short": "Remove a hook from the project",
+      "side_effect": "destructive",
+      "idempotent": "yes",
+      "dry_run_supported": true,
+      "flags": [
+        {
+          "name": "purge",
+          "type": "bool",
+          "description": "also delete handler files from disk",
+          "default": "false"
+        }
+      ]
+    },
+    {
+      "path": "nerv replay",
+      "name": "replay",
+      "short": "Replay a recorded event through the hook pipeline",
+      "side_effect": "read",
+      "idempotent": "yes",
+      "dry_run_supported": false,
+      "flags": [
+        {
+          "name": "last",
+          "type": "int",
+          "description": "Replay last N events",
+          "default": "0"
+        }
+      ]
+    },
+    {
+      "path": "nerv status",
+      "name": "status",
+      "short": "Show nerv daemon and adapter status",
+      "side_effect": "read",
+      "idempotent": "yes",
+      "dry_run_supported": false
+    },
+    {
+      "path": "nerv tail",
+      "name": "tail",
+      "short": "Stream live hook events",
+      "side_effect": "interactive",
+      "idempotent": "yes",
+      "dry_run_supported": false,
+      "flags": [
+        {
+          "name": "cli",
+          "type": "string",
+          "description": "Filter by CLI name"
+        },
+        {
+          "name": "event",
+          "type": "string",
+          "description": "Filter by event name"
+        },
+        {
+          "name": "last",
+          "type": "int",
+          "description": "Number of recent entries to show initially",
+          "default": "20"
+        },
+        {
+          "name": "slow",
+          "type": "bool",
+          "description": "Only show events where handler took \u003e100ms",
+          "default": "false"
+        }
+      ]
+    },
+    {
+      "path": "nerv test",
+      "name": "test",
+      "short": "Run hook handlers with synthetic envelopes",
+      "side_effect": "interactive",
+      "idempotent": "no",
+      "dry_run_supported": false,
+      "flags": [
+        {
+          "name": "all",
+          "type": "bool",
+          "description": "Run all hooks with sample envelopes",
+          "default": "false"
+        },
+        {
+          "name": "command",
+          "type": "string",
+          "description": "Command string for payload"
+        },
+        {
+          "name": "event",
+          "type": "string",
+          "description": "Event name to test (e.g. PreToolUse)"
+        },
+        {
+          "name": "tool",
+          "type": "string",
+          "description": "Tool name for payload"
+        }
+      ]
+    },
+    {
+      "path": "nerv upgrade",
+      "name": "upgrade",
+      "short": "Upgrade nerv to the latest version",
+      "side_effect": "write",
+      "idempotent": "no",
+      "dry_run_supported": true
+    }
+  ]
+}

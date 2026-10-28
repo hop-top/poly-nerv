@@ -1,0 +1,23 @@
+%% Nerv End-to-End Event Flow
+%%
+%% CLI event travels through adapter, envelope, dispatch,
+%% pattern matching, handler fork, decision merge, and reply.
+
+flowchart LR
+    CLI[CLI Event] --> Adapter[CLI Adapter]
+    Adapter --> Envelope[Build Envelope]
+    Envelope --> Redact[Redaction]
+    Redact --> Dispatch[Dispatch]
+    Dispatch --> Match{Pattern Match}
+    Match -->|no match| Allow[Default Allow]
+    Match -->|matched| Fork[Fork Handler 1..N]
+    Fork --> H1[Handler 1]
+    Fork --> H2[Handler 2]
+    Fork --> HN[Handler N]
+    H1 --> Merge[Decision Merge]
+    H2 --> Merge
+    HN --> Merge
+    Merge --> Reply[Reply Envelope]
+    Allow --> Reply
+    Reply --> Adapter
+    Adapter --> CLI2[CLI Response]

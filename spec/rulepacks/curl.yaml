@@ -1,0 +1,30 @@
+# Rule pack: curl
+# Schema: rulepack.schema.json
+#
+# Block "curl | sh" remote-code-execution patterns. The remote URL
+# may be authentic today and compromised tomorrow; this hands an
+# unknown shell-script unrestricted exec rights.
+
+name: curl
+version: 1
+description: Block curl-piped-to-shell remote code execution.
+applies_to:
+  tool: Bash
+
+rules:
+  - id: curl-pipe-shell
+    description: curl piped to sh / bash / sudo bash
+    severity: high
+    pattern: '\bcurl\b[^|;]*\|[^|;]*\b(sh|bash|zsh|sudo\s+sh|sudo\s+bash|sudo\s+zsh)\b'
+    default_mode: block
+    destructive: true
+    backup_strategy: script_capture
+    reason: |
+      'curl <url> | sh' executes whatever bytes arrive from the URL,
+      with no opportunity to review. The host may be compromised;
+      the response may differ for an automated request vs. a human
+      reading the docs page. Default: block + capture the script
+      content for review before manual approval.
+
+      Safer alternative: curl <url> -o install.sh; review install.sh;
+      sh install.sh.

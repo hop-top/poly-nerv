@@ -1,0 +1,26 @@
+# Rule pack: wget
+# Schema: rulepack.schema.json
+#
+# Same RCE class as curl-pipe-shell, with wget syntax variants.
+
+name: wget
+version: 1
+description: Block wget-piped-to-shell remote code execution.
+applies_to:
+  tool: Bash
+
+rules:
+  - id: wget-pipe-shell
+    description: wget output piped to sh / bash
+    severity: high
+    pattern: '\bwget\b[^|;]*-O-\s*[^|;]*\|[^|;]*\b(sh|bash|zsh)\b|\bwget\b[^|;]*-q?O\s*-\s*[^|;]*\|[^|;]*\b(sh|bash|zsh)\b'
+    default_mode: block
+    destructive: true
+    backup_strategy: script_capture
+    reason: |
+      'wget -O- <url> | sh' (or 'wget -qO- <url> | bash') executes
+      remote bytes with no review opportunity. Same risk as
+      curl-pipe-shell: the host may be compromised; the response
+      may target your environment specifically.
+
+      Safer: wget -O install.sh <url>; review; sh install.sh.

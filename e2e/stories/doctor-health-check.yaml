@@ -1,0 +1,22 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/hop-top/kit/main/contracts/story-schema.json
+schema_version: "1"
+story_id: nerv.doctor.installation-health-check
+title: Diagnose a nerv installation with doctor
+binary: nerv
+intent: |
+  An OSS contributor cloning nerv for the first time wants the codebase
+  to teach itself rather than filing a how-do-I issue. They run nerv
+  doctor to get a per-check verdict covering each adapter, hooks.yaml,
+  the event log and the daemon, then act on any WARN or SKIP rows before
+  starting work.
+references:
+  - title: nerv README
+    url: https://github.com/hop-top/nerv
+steps:
+  - id: diagnose
+    intent: |
+      Run every health check and print the check, status and message
+      columns. The contributor looks for WARN or FAIL rows and resolves
+      them before continuing with their first change.
+    invoke: ["nerv", "doctor"]
+    capture: [exit_code, stdout, duration_ms]

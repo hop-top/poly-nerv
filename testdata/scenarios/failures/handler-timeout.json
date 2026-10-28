@@ -1,0 +1,19 @@
+{
+  "name": "handler_timeout",
+  "description": "Handler sleeps forever, timeout kills it — fail-open allows",
+  "input": {
+    "event": "PreToolUse",
+    "cli": {"name": "claude", "version": "1.0.0"},
+    "session": {"id": "fail-timeout-001"},
+    "payload": {
+      "tool": "bash",
+      "input": {"command": "ls"}
+    },
+    "handler": "testdata/handlers/failures/hang.sh",
+    "timeout_ms": 500
+  },
+  "expected": {
+    "action": "allow",
+    "reason": "handler timed out"
+  }
+}

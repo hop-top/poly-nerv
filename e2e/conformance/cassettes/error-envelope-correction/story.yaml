@@ -1,0 +1,32 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/hop-top/kit/main/contracts/story-schema.json
+schema_version: "1"
+story_id: nerv.conformance.error-envelope-correction
+title: Fail with machine-actionable errors and honest exit classes
+binary: nerv
+intent: |
+  An agent issues three flawed invocations: replaying an event id that
+  does not exist, passing a flag the CLI does not know, and calling a
+  command that does not exist. For each it expects a structured error
+  envelope carrying a code and a correction path it can act on, and an
+  exit code whose class distinguishes not-found from usage errors so
+  the agent knows whether to correct input, retry, or escalate.
+steps:
+  - id: replay_missing
+    intent: |
+      Replay an event id that is not in the event log. The error
+      should identify the not-found condition and point at a recovery
+      path such as listing recorded events.
+    invoke: ["nerv", "replay", "evt-does-not-exist", "--format", "json"]
+    capture: [exit_code, stdout, stderr]
+  - id: unknown_flag
+    intent: |
+      Pass an unknown flag. The CLI should reject it as a usage error
+      and suggest how to discover valid flags.
+    invoke: ["nerv", "status", "--bogus-flag", "--format", "json"]
+    capture: [exit_code, stdout, stderr]
+  - id: unknown_command
+    intent: |
+      Call a command that does not exist. The CLI should signal a
+      usage error rather than reporting success.
+    invoke: ["nerv", "frobnicate"]
+    capture: [exit_code, stdout, stderr]

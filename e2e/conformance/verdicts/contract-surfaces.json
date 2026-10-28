@@ -1,0 +1,19 @@
+{
+  "scenario_id": "contract-surfaces",
+  "verdict": "pass",
+  "exit_code": 0,
+  "tier": 3,
+  "scored_at": "2026-08-08T20:03:30.95016Z",
+  "grader_version": "1.0.0",
+  "rules_version": "2026.05.12.1",
+  "facets": [
+    {
+      "factor": 5,
+      "status": "pass"
+    },
+    {
+      "factor": 11,
+      "status": "pass"
+    }
+  ]
+}

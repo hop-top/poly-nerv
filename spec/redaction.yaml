@@ -1,0 +1,107 @@
+version: "1.0"
+
+# Nerv Redaction Patterns
+#
+# Applied in definition order; first match wins per span.
+# Redaction runs BEFORE envelope reaches handler stdin.
+# Performance budget: ≤100ms per envelope.
+
+patterns:
+  # --- Environment & Config ---
+
+  - name: env_var_expansion
+    description: "Environment variable values in payload"
+    regex: '\$\{?[A-Z_][A-Z0-9_]*\}?'
+    replacement: '${REDACTED:$0}'
+    scope: payload
+
+  - name: dotenv_content
+    description: "KEY=value lines from .env files"
+    regex: '^[A-Z_][A-Z0-9_]*=.+$'
+    replacement: '${REDACTED:env_line}'
+    scope: payload
+    flags: multiline
+
+  # --- Bearer / Auth Headers ---
+
+  - name: bearer_token
+    description: "Bearer tokens in headers/strings"
+    regex: 'Bearer\s+[A-Za-z0-9\-._~+/]+=*'
+    replacement: 'Bearer ${REDACTED:token}'
+    scope: payload
+
+  # --- Generic API Keys ---
+
+  - name: api_key_pattern
+    description: "Common API key formats"
+    regex: '(?:sk|pk|api|key|token|secret|password|auth)[_-]?[A-Za-z0-9]{20,}'
+    replacement: '${REDACTED:api_key}'
+    scope: payload
+
+  # --- JWT ---
+
+  - name: jwt_token
+    description: "JWT tokens (3 base64url segments)"
+    regex: 'eyJ[A-Za-z0-9_-]*\.eyJ[A-Za-z0-9_-]*\.[A-Za-z0-9_-]*'
+    replacement: '${REDACTED:jwt}'
+    scope: payload
+
+  # --- PEM Private Keys ---
+
+  - name: private_key_block
+    description: "PEM private key blocks"
+    regex: '-----BEGIN (?:RSA |EC |DSA )?PRIVATE KEY-----[\s\S]*?-----END (?:RSA |EC |DSA )?PRIVATE KEY-----'
+    replacement: '${REDACTED:private_key}'
+    scope: payload
+
+  # --- Cloud Provider Tokens ---
+
+  - name: aws_access_key
+    description: "AWS access key IDs (AKIA prefix)"
+    regex: 'AKIA[0-9A-Z]{16}'
+    replacement: '${REDACTED:aws_access_key}'
+    scope: payload
+
+  - name: aws_secret_key
+    description: "AWS secret access keys (40-char base64)"
+    regex: 'aws_secret_access_key\s*=\s*[A-Za-z0-9/+=]{40}'
+    replacement: 'aws_secret_access_key=${REDACTED:aws_secret_key}'
+    scope: payload
+
+  - name: github_token
+    description: "GitHub tokens (ghp_, gho_, ghs_, ghr_, github_pat_)"
+    regex: '(?:ghp|gho|ghs|ghr)_[A-Za-z0-9_]{36,}|github_pat_[A-Za-z0-9_]{22,}'
+    replacement: '${REDACTED:github_token}'
+    scope: payload
+
+  - name: slack_token
+    description: "Slack tokens (xoxb-, xoxp-, xoxe-, xoxa-)"
+    regex: 'xox[bpea]-[0-9A-Za-z\-]{24,}'
+    replacement: '${REDACTED:slack_token}'
+    scope: payload
+
+  # --- Connection Strings ---
+
+  - name: connection_string
+    description: "Database/service connection strings with credentials"
+    regex: '(?:mongodb(?:\+srv)?|postgres(?:ql)?|mysql|redis|amqp|mssql)://[^@\s/"''`]+(?::[^@\s/"''`]*)?@[^\s"''`]+'
+    replacement: '${REDACTED:connection_string}'
+    scope: payload
+
+  # --- Base64 Secrets ---
+
+  - name: base64_secret
+    description: "Base64-encoded values in secret/key/password fields"
+    regex: '(?:secret|key|password|token|credential)\s*[:=]\s*[A-Za-z0-9+/]{40,}={0,2}'
+    replacement: '${REDACTED:base64_secret}'
+    scope: payload
+
+  # --- Write/Edit Tool Content ---
+
+  - name: write_tool_content
+    description: "File content in Write/Edit tool payloads"
+    applies_to: [PreToolUse, PostToolUse]
+    tool_match: "Write|Edit"
+    action: "replace_content_with_hash"
+    replacement: '{sha256: "<hash>", bytes: <N>}'
+    scope: payload.content

@@ -1,0 +1,21 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/hop-top/kit/main/contracts/story-schema.json
+schema_version: "1"
+story_id: nerv.test.exercise-every-hook
+title: Exercise every configured hook with sample envelopes
+binary: nerv
+intent: |
+  A platform engineer who has just changed hook configuration wants a
+  smoke test across the whole routing tree rather than one event at a
+  time. They run nerv test --all so every configured hook is invoked
+  with a sample envelope, then read the per-hook results to confirm no
+  handler errors or unexpected refusals were introduced by the change.
+preconditions:
+  - a hooks.yaml is discoverable from the working directory
+steps:
+  - id: exercise_all
+    intent: |
+      Run every configured hook against sample envelopes and print the
+      per-hook outcome. The engineer scans for handler errors before
+      considering the configuration change safe to commit.
+    invoke: ["nerv", "test", "--all"]
+    capture: [exit_code, stdout, stderr]

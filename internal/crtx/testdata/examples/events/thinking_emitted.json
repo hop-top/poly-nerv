@@ -1,0 +1,6 @@
+{
+  "envelope_id": "01JCRTX0EXAMPLETOOLCALL0001",
+  "turn_id": "01JCRTX0TURN0013",
+  "text": "User wants weather. Tool returned 18C partly cloudy. Compose a concise reply.",
+  "signature": "sig_eyJhbGciOiJFUzI1NiJ9"
+}

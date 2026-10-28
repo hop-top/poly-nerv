@@ -1,0 +1,10 @@
+name: block-rm-rf
+version: "1.0.0"
+description: Blocks destructive rm -rf / commands
+author: nerv
+license: MIT
+events:
+  - PreToolUse
+requires:
+  capabilities: []
+  nerv_version: ">=1.0.0"

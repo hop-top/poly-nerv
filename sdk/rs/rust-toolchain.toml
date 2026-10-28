@@ -1,0 +1,11 @@
+# Rust toolchain pin for hop-top-nerv.
+#
+# edition = "2024" in Cargo.toml requires rustc >= 1.85. The exact
+# release below matches the `rust` pin in the repo-root mise.toml, so
+# local dev + CI build with the same rustc and install the rustfmt +
+# clippy components consistently.
+
+[toolchain]
+channel = "1.99.0"
+components = ["rustfmt", "clippy"]
+profile = "minimal"

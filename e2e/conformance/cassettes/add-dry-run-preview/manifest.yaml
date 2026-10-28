@@ -1,0 +1,19 @@
+schema_version: "1"
+binary: nerv
+binary_version: b761442
+recorder: xrr
+recorder_version: 0.0.0-manual
+recorded_at: 2026-08-08T20:02:43Z
+scenario_id: nerv/add-dry-run-preview
+scenario_version: 1.0.0
+story_ref:
+  story_id: nerv.conformance.add-dry-run-preview
+  story_path: story.yaml
+  content_hash: sha256:193cdd8a243da0e08474ad9e6c5971ddb63df9752a8ee1a66d4b72c117e05ed6
+steps:
+  - id: add_dry
+    cassette_dir: steps/add_dry/cassette
+    captures: steps/add_dry
+  - id: status_after_dry
+    cassette_dir: steps/status_after_dry/cassette
+    captures: steps/status_after_dry

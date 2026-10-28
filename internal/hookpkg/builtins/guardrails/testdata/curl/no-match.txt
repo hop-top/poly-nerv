@@ -1,0 +1,8 @@
+curl https://example.com/file -o file
+curl -fsSL https://example.com/x.sh -o install.sh
+curl -X POST https://api.example.com/foo
+curl https://api.example.com | jq .
+curl https://api.example.com | tee log
+# Lines like 'echo "curl | sh"' are excluded because the matcher
+# operates on the raw command string and cannot reason about quoted
+# arguments. In practice such echoes are harmless if blocked.

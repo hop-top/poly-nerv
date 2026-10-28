@@ -1,0 +1,19 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/hop-top/kit/main/contracts/story-schema.json
+schema_version: "1"
+story_id: nerv.status.machine-readable-output
+title: Consume nerv status as JSON from an automation
+binary: nerv
+intent: |
+  An automation builder wiring nerv into a monitoring pipeline needs the
+  same status information the human table shows, but in a shape a
+  program can parse. They request JSON output so the consumer reads
+  structured fields rather than screen-scraping an aligned table whose
+  column widths are not a stable contract.
+steps:
+  - id: status_json
+    intent: |
+      Render the status report as JSON on stdout so a downstream
+      consumer can parse the daemon and adapter fields directly instead
+      of scraping the human table.
+    invoke: ["nerv", "status", "--format", "json"]
+    capture: [exit_code, stdout]

@@ -1,0 +1,27 @@
+{
+  "name": "codex-shell-match",
+  "description": "Codex shell regex matches cd command; synthesizes CwdChanged",
+  "hooks": {
+    "version": "1.0-draft",
+    "hooks": [
+      {
+        "name": "cwd-notify",
+        "on": "CwdChanged",
+        "run": "./testdata/handlers/allow-passthrough.sh"
+      }
+    ]
+  },
+  "envelope": {
+    "event": "CwdChanged",
+    "cli": {"name": "codex", "version": "0.1.0"},
+    "session": {"id": "test-codex-cwd"},
+    "synthesized": true,
+    "synthesis_source": "shell_regex",
+    "payload": {
+      "command": "cd /tmp/workdir"
+    }
+  },
+  "expected": {
+    "action": "allow"
+  }
+}

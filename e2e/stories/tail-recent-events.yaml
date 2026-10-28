@@ -1,0 +1,21 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/hop-top/kit/main/contracts/story-schema.json
+schema_version: "1"
+story_id: nerv.tail.inspect-recent-events
+title: Inspect recent hook events from the event log
+binary: nerv
+intent: |
+  An automation builder integrating with nerv wants to see the events
+  the hook pipeline has recorded without tailing files by hand. They run
+  nerv tail restricted to a small window of recent entries and filtered
+  to one event name, so the output is a readable slice of the event log
+  rather than the whole stream.
+preconditions:
+  - the nerv event log contains at least one recorded entry
+steps:
+  - id: recent
+    intent: |
+      Print a bounded window of recent PreToolUse entries from the event
+      log. The builder inspects the recorded envelope fields to confirm
+      the shape their downstream consumer will have to parse.
+    invoke: ["nerv", "tail", "--last", "5", "--event", "PreToolUse"]
+    capture: [exit_code, stdout]

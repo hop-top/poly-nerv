@@ -1,0 +1,69 @@
+services:
+  claude:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.test
+      args:
+        CLI_NAME: claude
+        CLI_VERSION: "${CLAUDE_VERSION:-latest}"
+        CLI_PACKAGE: "@anthropic-ai/claude-code"
+  gemini:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.test
+      args:
+        CLI_NAME: gemini
+        CLI_VERSION: "${GEMINI_VERSION:-latest}"
+        CLI_PACKAGE: "@google/gemini-cli"
+  codex:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.test
+      args:
+        CLI_NAME: codex
+        CLI_VERSION: "${CODEX_VERSION:-latest}"
+        CLI_PACKAGE: "@openai/codex"
+  opencode:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.test
+      args:
+        CLI_NAME: opencode
+        CLI_VERSION: "${OPENCODE_VERSION:-latest}"
+        CLI_PACKAGE: "github.com/sst/opencode"
+        CLI_INSTALL_METHOD: go
+  aider:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.test
+      args:
+        CLI_NAME: aider
+        CLI_VERSION: "${AIDER_VERSION:-latest}"
+        CLI_PACKAGE: "aider-chat"
+        CLI_INSTALL_METHOD: pip
+  goose:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.test
+      args:
+        CLI_NAME: goose
+        CLI_VERSION: "${GOOSE_VERSION:-latest}"
+        CLI_PACKAGE: "goose-cli"
+        CLI_INSTALL_METHOD: cargo
+  vibe:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.test
+      args:
+        CLI_NAME: vibe
+        CLI_VERSION: "${VIBE_VERSION:-latest}"
+        CLI_PACKAGE: "@mistralai/vibe"
+  openhands:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.test
+      args:
+        CLI_NAME: openhands
+        CLI_VERSION: "${OPENHANDS_VERSION:-latest}"
+        CLI_PACKAGE: "openhands"
+        CLI_INSTALL_METHOD: pip

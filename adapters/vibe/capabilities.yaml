@@ -1,0 +1,60 @@
+# Vibe CLI (Mistral) capability map for nerv adapter.
+# Source: github.com/mistralai/mistral-vibe (vibe/core/types.py)
+cli: vibe
+
+native:
+  - vibe: UserMessageEvent
+    nerv: UserPromptSubmit
+  - vibe: ToolCallEvent
+    nerv: PreToolUse
+  - vibe: ToolResultEvent
+    nerv: PostToolUse
+  - vibe: CompactStartEvent
+    nerv: PreCompact
+  - vibe: CompactEndEvent
+    nerv: PostCompact
+  - vibe: AgentProfileChangedEvent
+    nerv: ConfigChange
+
+close:
+  - vibe: AssistantEvent
+    nerv: Stop
+    note: maps when response ends
+  - vibe: WaitingForInputEvent
+    nerv: Elicitation
+    note: maps to user input request
+
+synthesized:
+  - nerv: PermissionRequest
+    source: ApprovalCallback
+    pattern: middleware approval callback
+  - nerv: PermissionDenied
+    source: ApprovalCallback
+    pattern: approval rejected
+  - nerv: ElicitationResult
+    source: UserInputCallback
+    pattern: user responds to input request
+  - nerv: SubagentStart
+    source: SwitchAgentCallback
+    pattern: agent switch callback
+  - nerv: SessionStart
+    source: middleware
+    pattern: before_turn() on first turn
+  - nerv: SessionEnd
+    source: middleware
+    pattern: reset() or session teardown
+
+unsupported:
+  - SubagentStop
+  - TaskCreated
+  - TaskCompleted
+  - StopFailure
+  - TeammateIdle
+  - Notification
+  - InstructionsLoaded
+  - CwdChanged
+  - FileChanged
+  - WorktreeCreate
+  - WorktreeRemove
+  - PostToolUseFailure
+  - BeforeToolSelection

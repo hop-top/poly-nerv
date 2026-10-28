@@ -1,0 +1,7 @@
+{
+  "envelope_id": "01JCRTX0EXAMPLETOOLCALL0001",
+  "turn_id": "01JCRTX0TURN0012",
+  "call_id": "call_abc123",
+  "output": { "temp_c": 18, "summary": "partly cloudy" },
+  "is_error": false
+}

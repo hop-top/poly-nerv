@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.nerv.daemon</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>${HOME}/.local/bin/nervd</string>
+    </array>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>NERV_SOCKET</key>
+        <string>${TMPDIR}/nerv.sock</string>
+    </dict>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>KeepAlive</key>
+    <dict>
+        <key>SuccessfulExit</key>
+        <false/>
+    </dict>
+
+    <key>StandardOutPath</key>
+    <string>${HOME}/.local/state/nerv/daemon.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>${HOME}/.local/state/nerv/daemon.log</string>
+</dict>
+</plist>
