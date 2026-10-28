@@ -127,7 +127,7 @@ export default (ctx: unknown) => ({
 
 // GeneratePlugin returns TypeScript source for the nerv bridge plugin.
 // The output is written to .opencode/plugins/nerv-bridge.ts by the
-// adapter's MergeConfig.
+// adapter's Install.
 func GeneratePlugin(nervdPath string) (string, error) {
 	if nervdPath == "" {
 		return "", fmt.Errorf("opencode: nervdPath must not be empty")

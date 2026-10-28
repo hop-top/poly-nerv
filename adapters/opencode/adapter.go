@@ -1,6 +1,7 @@
 package opencode
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -71,15 +72,16 @@ func (a *Adapter) ConfigPaths() []string {
 	}
 }
 
-// MergeConfig merges nerv hook config into OpenCode's existing config.
-// It writes the generated TS plugin content as the merged output for
-// the plugin file path.
+// MergeConfig merges the nerv marker into OpenCode's existing
+// opencode.json (ConfigPaths()[0]), preserving every other key. The
+// bridge plugin itself is a separate file written by Install; the
+// merge still requires NervdPath so the marker is never recorded for a
+// bridge that cannot be generated.
 func (a *Adapter) MergeConfig(existing []byte) ([]byte, error) {
-	plugin, err := GeneratePlugin(a.NervdPath)
-	if err != nil {
+	if _, err := GeneratePlugin(a.NervdPath); err != nil {
 		return nil, fmt.Errorf("opencode: generate plugin: %w", err)
 	}
-	return []byte(plugin), nil
+	return mergePluginConfig(existing)
 }
 
 // Translate converts an OpenCode native event to a nerv envelope.
@@ -119,19 +121,31 @@ func (a *Adapter) Install() error {
 	return nil
 }
 
-// ensurePluginConfig ensures opencode.json has plugins dir set.
+// ensurePluginConfig ensures opencode.json carries the nerv marker.
 func ensurePluginConfig(path string) error {
-	var cfg map[string]any
-
 	data, err := os.ReadFile(path)
+	if err != nil && !os.IsNotExist(err) {
+		return err
+	}
+	out, err := mergePluginConfig(data)
 	if err != nil {
-		if !os.IsNotExist(err) {
-			return err
+		return err
+	}
+	return os.WriteFile(path, out, 0o640)
+}
+
+// mergePluginConfig returns opencode.json content with the nerv marker
+// set and all other keys preserved. Empty input yields a new config.
+func mergePluginConfig(existing []byte) ([]byte, error) {
+	cfg := map[string]any{}
+	if len(bytes.TrimSpace(existing)) > 0 {
+		dec := json.NewDecoder(bytes.NewReader(existing))
+		dec.UseNumber() // keep large integers exact
+		if err := dec.Decode(&cfg); err != nil {
+			return nil, fmt.Errorf("parse opencode.json: %w", err)
 		}
-		cfg = make(map[string]any)
-	} else {
-		if err := json.Unmarshal(data, &cfg); err != nil {
-			return fmt.Errorf("parse opencode.json: %w", err)
+		if cfg == nil { // literal null
+			cfg = map[string]any{}
 		}
 	}
 
@@ -146,7 +160,7 @@ func ensurePluginConfig(path string) error {
 
 	out, err := json.MarshalIndent(cfg, "", "  ")
 	if err != nil {
-		return err
+		return nil, err
 	}
-	return os.WriteFile(path, append(out, '\n'), 0o640)
+	return append(out, '\n'), nil
 }
