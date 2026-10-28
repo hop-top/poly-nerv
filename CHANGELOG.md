@@ -1,4 +1,15 @@
-# Changelog — nerv
+# Changelog
+
+## [0.1.0-alpha.1](https://github.com/hop-top/poly-nerv/compare/nerv/v0.1.0-alpha.0...nerv/v0.1.0-alpha.1) (2026-10-28)
+
+
+### Bug Fixes
+
+* **aider:** stop claiming session hook capabilities ([04820e7](https://github.com/hop-top/poly-nerv/commit/04820e7ad4cf0c5202ce7a61ee97ed3dccf25938))
+* **codex:** preserve unknown keys in hooks.json merge ([8caceb7](https://github.com/hop-top/poly-nerv/commit/8caceb790c0413040e46dfa18a80bba2a99b1e64))
+* **opencode:** merge opencode.json in MergeConfig, not plugin source ([f903a55](https://github.com/hop-top/poly-nerv/commit/f903a5587c6d13f3bc72defe9c97e3a87cf63bc1))
+
+## Changelog — nerv
 
 All notable changes to nerv land here. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning follows
