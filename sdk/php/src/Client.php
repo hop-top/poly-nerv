@@ -114,7 +114,7 @@ final class Client
         // Surface the install-instructions error from GrpcTransport's
         // canonical check rather than triggering a confusing
         // class-not-found error here.
-        if (!class_exists(ChannelCredentials::class)) {
+        if (!extension_loaded('grpc')) {
             // GrpcTransport's constructor throws with full instructions.
             return new self(new GrpcTransport($authority));
         }

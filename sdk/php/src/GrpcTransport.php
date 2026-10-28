@@ -16,16 +16,17 @@ use Nerv\V1\ListRequest;
 /**
  * GrpcTransport is the real wire transport for the nerv PHP SDK.
  *
- * Wraps the PECL `grpc` extension's {@see BaseStub} via the generated
- * {@see EventServiceClient} client stub. Supports both Unix domain
+ * Wraps the generated {@see EventServiceClient} client stub, which
+ * extends {@see BaseStub} from the `grpc/grpc` Composer package and
+ * runs on the PECL `grpc` extension. Supports both Unix domain
  * socket targets (`unix:/path/to/sock`) and TCP host:port targets
  * (`host:port` or scheme-prefixed URIs via {@see Client::fromBaseUrl()}).
  *
  * The class is defined unconditionally so the SDK loads under PSR-4
  * autoload even when the PECL `grpc` extension is absent. The
- * constructor throws a clear "install ext-grpc" error if
- * {@see BaseStub} is not declared — discoverable at the call site,
- * not at composer-install time.
+ * constructor throws a clear "install ext-grpc" error when the
+ * extension is not loaded — discoverable at the call site, not at
+ * composer-install time.
  *
  * For pure-PHP in-process testing (no PECL dep), use
  * {@see EventServiceStub} instead.
@@ -66,7 +67,9 @@ final class GrpcTransport implements Transport
         string $target,
         ?ChannelCredentials $credentials = null,
     ) {
-        if (!class_exists(BaseStub::class)) {
+        // Check the extension itself: Grpc\BaseStub comes from the
+        // grpc/grpc Composer package and exists with or without it.
+        if (!extension_loaded('grpc')) {
             throw new \RuntimeException(
                 'PECL grpc extension not loaded. Install via '
                 . '`pecl install grpc` (or `apt install php-grpc` on '

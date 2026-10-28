@@ -72,7 +72,9 @@ final class ClientTest extends TestCase
         }
 
         // Without ext-grpc, GrpcTransport's constructor throws with
-        // install instructions.
+        // install instructions, even though grpc/grpc's BaseStub
+        // (pure PHP) is installed.
+        self::assertTrue(class_exists(\Grpc\BaseStub::class), 'grpc/grpc not installed');
         $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessageMatches('/ext-grpc|PECL grpc/');
         Client::fromSocket('/tmp/nerv-unit-test.sock');
