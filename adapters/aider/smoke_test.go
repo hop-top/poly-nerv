@@ -91,7 +91,7 @@ func TestSmoke_MergeAndDetect(t *testing.T) {
 	}
 
 	content := string(merged)
-	if !containsStr(content, "nerv dispatch aider") {
+	if !containsStr(content, "nervd --adapter aider") {
 		t.Error("merged config missing nerv dispatch command")
 	}
 	if !containsStr(content, "lint-cmd") {

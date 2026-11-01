@@ -63,8 +63,20 @@ in the first tagged release.
 - `nerv install` also writes `nervd --adapter gemini` (was
   `nerv-adapter gemini <event>`) and `nervd --adapter codex` (was
   `nerv dispatch`); neither legacy command resolved to a binary. Legacy
-  entries are upgraded on reinstall. Aider's `nerv dispatch aider`
-  commands are unchanged.
+  entries are upgraded on reinstall.
+- Aider: `nerv install` writes `nervd --adapter aider lint|test` into
+  `lint-cmd`/`test-cmd` (was `nerv dispatch aider ...`, a nonexistent
+  subcommand, so hooks never ran). `nervd --adapter aider` takes argv
+  (verb plus the files Aider appends), never reads stdin; lint maps to
+  FileChanged, test to PostToolUse. block exits 1 with the message on
+  stdout (Aider feeds it to the model); allow/warn exit 0; rewrite and
+  context dropped. Existing commands chain as
+  `f(){ nervd ... "$@" && <orig> "$@"; }; f` (original's output and
+  exit status preserved, paths with spaces safe, quoted YAML decoded,
+  `python: cmd` form wrapped per language, YAML lists rejected).
+  Legacy entries upgrade in place, idempotently. Capabilities corrected:
+  lint/test run after the edit, so PreToolUse and session events are no
+  longer claimed.
 - Goose and Aider have no model-context channel and drop it; see
   capability-matrix for sources.
 - Proto `Decision.context = 5`; Go/TS/Python/PHP stubs regenerated;

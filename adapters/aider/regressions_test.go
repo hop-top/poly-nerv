@@ -40,7 +40,7 @@ func TestRegression_MergeConfig_DuplicateLintCmd(t *testing.T) {
 	}
 
 	// nerv dispatch must be present.
-	if !strings.Contains(content, "nerv dispatch aider") {
+	if !strings.Contains(content, "nervd --adapter aider") {
 		t.Error("merged config missing nerv dispatch")
 	}
 }

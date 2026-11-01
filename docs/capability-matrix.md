@@ -24,7 +24,7 @@ appendix.
 | openhands | 5      | 15          | 6         | 20/26 (77%) |
 | codex     | 3      | 12          | 11        | 15/26 (58%) |
 | vibe      | 6      | 8           | 12        | 14/26 (54%) |
-| aider     | 0      | 5           | 20 (+1 undeclared) | 5/26 (19%) |
+| aider     | 0      | 2           | 23 (+1 undeclared) | 2/26 (8%) |
 
 Native count = events listed under `native:` in each
 `capabilities.yaml`. Synthesized = events listed under `synthesized:`
@@ -41,14 +41,14 @@ Columns ordered by coverage, most → least.
 | Event                | claude | gemini | opencode | goose | openhands | codex | vibe | aider |
 |----------------------|:------:|:------:|:--------:|:-----:|:---------:|:-----:|:----:|:-----:|
 | **session**          |        |        |          |       |           |       |      |       |
-| SessionStart         |   ✓    |   ✓    |    ✓     |   ✓   |     ✓     |   ✓   |  ~   |   ~   |
-| SessionEnd           |   ✓    |   ✓    |    ✓     |   ✓   |     ✓     |   -   |  ~   |   ~   |
+| SessionStart         |   ✓    |   ✓    |    ✓     |   ✓   |     ✓     |   ✓   |  ~   |   -   |
+| SessionEnd           |   ✓    |   ✓    |    ✓     |   ✓   |     ✓     |   -   |  ~   |   -   |
 | Stop                 |   ✓    |   ~    |    ✓     |   ✓   |     ~     |   ✓   |  ~   |   -   |
 | StopFailure          |   ✓    |   -    |    ✓     |   ✓   |     ~     |   -   |  -   |   -   |
 | **prompt**           |        |        |          |       |           |       |      |       |
 | UserPromptSubmit     |   ✓    |   ~    |    ~     |   ~   |     ✓     |   ✓   |  ✓   |   -   |
 | **tool**             |        |        |          |       |           |       |      |       |
-| PreToolUse           |   ✓    |   ✓    |    ✓     |   ~   |     ✓     |   ~   |  ✓   |   ~   |
+| PreToolUse           |   ✓    |   ✓    |    ✓     |   ~   |     ✓     |   ~   |  ✓   |   -   |
 | PostToolUse          |   ✓    |   ✓    |    ✓     |   ~   |     ✓     |   ~   |  ✓   |   ~   |
 | PostToolUseFailure   |   ✓    |   ~    |    -     |   ~   |     ~     |   ~   |  -   |   ?   |
 | **permission**       |        |        |          |       |           |       |      |       |
@@ -106,7 +106,7 @@ the opencode bridge; legacy commands are upgraded on reinstall.
 | goose     | - | hooks are observation-only except PreToolUse/Stop block; hook stdout is read only for the decision and, on SessionStart, a user-visible `banner` stored with `agent_visible=false` (`crates/goose/src/hooks/mod.rs` `emit_collecting_banners`, `agents/state_machine/session.rs` `session_start_message`) |
 | openhands | ✓ end to end | hook command `nervd --adapter openhands`; top-level `additionalContext` on SessionStart (emitted as a message after the system prompt) and UserPromptSubmit (appended to extended content) via `openhands.FromEventDecision`; PreToolUse/PostToolUse results are not consumed |
 | vibe      | ✓ end to end | hook command `nervd --adapter vibe`; `hook_specific_output.additional_context` on `post_tool` (ToolResultEvent), appended to the tool output the LLM sees, via `vibe.FromEventDecision`; `pre_tool` / `post_agent` have no context field |
-| aider     | - | no hook protocol; `lint-cmd` / `test-cmd` output reaches the model only on non-zero exit as an error-repair prompt (`aider/commands.py` `cmd_test`), which would turn context into a failure signal |
+| aider     | - | no hook protocol; hook command `nervd --adapter aider lint\|test` (argv in, exit code out). `lint-cmd` / `test-cmd` output reaches the model only on non-zero exit, as an error-repair prompt (`aider/commands.py` `cmd_test`/`cmd_run(add_on_nonzero_exit)`, `aider/linter.py` `run_cmd`, `aider/coders/base_coder.py` `lint_edited`), which would turn context into a failure signal. Only `block` (exit 1, message on stdout) is expressible; warn exits 0, rewrite and context are dropped |
 
 Sources (checked against upstream HEAD, Nov 2026): openai/codex
 `codex-rs/hooks/schema/generated/*.command.output.schema.json` and
@@ -162,10 +162,22 @@ Recurring blockers (lifted from each `capabilities.yaml`'s
 - **Vibe (Mistral)** — no file/shell/worktree lifecycle; Vibe is a
   multi-turn chat surface, not a file-editing CLI, so 12 of the 26
   events have no natural source.
-- **Aider** — Aider has no hook protocol. All 5 covered events are
-  synthesized by an out-of-band `nerv` bridge script attached to
-  `lint-cmd` / `test-cmd`. Everything else is uncovered; one event
-  (`PostToolUseFailure`) is undeclared in
+- **Aider** — Aider has no hook protocol. The only extension points are
+  `lint-cmd` (FileChanged; edited file is the trailing argv word) and
+  `test-cmd` (PostToolUse; no args), installed as
+  `nervd --adapter aider lint|test`. Both run after Aider has applied
+  the edit (`aider/coders/base_coder.py` `lint_edited`, `cmd_test`), so
+  nothing can prevent it: `PreToolUse` and session events are uncovered.
+  Semantics: block = exit 1 with the message on stdout (Aider feeds it
+  to the model as an error); allow/warn = exit 0 (warn text goes to
+  stderr, shown to the user only); rewrite and context are dropped. A
+  user's existing command is chained as
+  `f(){ nervd ... "$@" && <orig> "$@"; }; f`: nerv gates first, the
+  original's output and exit status reach Aider otherwise. Per-language
+  `lint-cmd: "python: cmd"` entries are wrapped per language; YAML list
+  forms are rejected. Caveat: a fresh global `lint-cmd` replaces Aider's
+  built-in linter for all languages. `PostToolUseFailure` is
+  undeclared in
   [`adapters/aider/capabilities.yaml`](../adapters/aider/capabilities.yaml)
   and rendered `?` pending a file amendment.
 

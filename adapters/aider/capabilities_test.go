@@ -14,7 +14,12 @@ func TestCapabilities_NoSessionHook(t *testing.T) {
 	if caps.PostSession {
 		t.Error("PostSession = true; no aider hook fires at session end")
 	}
-	if !caps.PreToolUse || !caps.PostToolUse {
-		t.Error("PreToolUse/PostToolUse must stay true (lint-cmd/test-cmd)")
+	// lint-cmd/test-cmd run after the edit is on disk
+	// (aider/coders/base_coder.py), so nothing precedes tool use.
+	if caps.PreToolUse {
+		t.Error("PreToolUse = true; lint-cmd/test-cmd run after the edit")
+	}
+	if !caps.PostToolUse {
+		t.Error("PostToolUse must stay true (test-cmd)")
 	}
 }

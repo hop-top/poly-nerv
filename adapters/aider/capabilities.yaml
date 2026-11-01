@@ -1,28 +1,27 @@
 # Aider CLI capability map for nerv adapter.
-# Aider has no native hook system; all events are synthesized
-# via nerv bridge scripts using lint-cmd/test-cmd hooks.
+# Aider has no native hook system. The only extension points are the
+# lint-cmd and test-cmd shell commands, which Aider runs AFTER it has
+# applied an edit (aider/coders/base_coder.py: lint_edited, cmd_test),
+# so neither can prevent the edit. nerv installs
+# `nervd --adapter aider lint|test` into them (argv in, exit code out).
+# Output reaches the model only on a non-zero exit, as an error-repair
+# prompt, so only block is expressible; warn/rewrite/context are dropped.
 cli: aider
 
 native: []
 
 synthesized:
-  - nerv: SessionStart
-    source: bridge
-    pattern: aider process start detection
-  - nerv: SessionEnd
-    source: bridge
-    pattern: aider process exit detection
-  - nerv: PreToolUse
-    source: bridge
-    pattern: lint-cmd invocation before apply
-  - nerv: PostToolUse
-    source: bridge
-    pattern: test-cmd invocation after apply
   - nerv: FileChanged
     source: bridge
-    pattern: file modification detected by lint/test hooks
+    pattern: lint-cmd invocation with the edited file as trailing argv
+  - nerv: PostToolUse
+    source: bridge
+    pattern: test-cmd invocation after edits are applied
 
 unsupported:
+  - SessionStart
+  - SessionEnd
+  - PreToolUse
   - SubagentStart
   - SubagentStop
   - UserPromptSubmit
