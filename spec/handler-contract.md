@@ -144,6 +144,16 @@ depends on.
 | vibe | `hook_specific_output.additional_context` | `post_tool` (ToolResultEvent) |
 | goose, aider | none — dropped | — |
 
+Adapter selection: `nervd --adapter <cli>` (codex, gemini, opencode,
+openhands, vibe; `claude` is the default) makes stateless nervd read that
+CLI's native hook JSON and answer in its dialect, using the native event
+name to pick the context channel. `nerv install` writes the flag into
+the hook command. Without `--adapter`, input carrying `hook_event_name`
+is answered as Claude Code, so hooks installed before the flag keep
+working. An unknown adapter exits 2 with `nervd: unknown adapter ...` on
+stderr. The opencode bridge consumes `{"action","message","rewrite",
+"context"}` (lowercase keys, `context` omitted when empty).
+
 Claude notes: on `PreToolUse` with `rewrite`, `additionalContext` is
 added next to `updatedInput` in the same `hookSpecificOutput` (the
 rewrite exit code is unchanged). `PermissionRequest` has no context

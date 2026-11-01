@@ -35,6 +35,21 @@ in the first tagged release.
 - OpenCode adapter: `FromEventDecision` + bridge plugin deliver context
   via `tool.execute.after` output and
   `experimental.chat.system.transform` (session start).
+- **`nervd --adapter <cli>`** (codex, gemini, opencode, openhands,
+  vibe): explicit adapter routing in stateless mode. Input decodes and
+  the decision encodes through that CLI's translator with the real
+  native event name, so `context` reaches the model. Unknown adapter
+  exits 2. Without the flag behavior is unchanged (claude dialect for
+  `hook_event_name` input), keeping already-installed hooks working.
+- `nerv install` writes `nervd --adapter openhands` / `nervd --adapter
+  vibe`; legacy bare `nervd` entries are upgraded on reinstall.
+- OpenCode bridge: session start routes through the plugin `event`
+  hook (`session.created`); tool hooks send typed events; invokes
+  `nervd --adapter opencode` (previously `nervd dispatch --format json`,
+  which nervd never accepted).
+- Known gap: gemini (`nerv-adapter gemini <event>`) and codex
+  (`nerv dispatch`) install commands do not resolve to nervd, so their
+  context is not delivered end to end yet.
 - Goose and Aider have no model-context channel and drop it; see
   capability-matrix for sources.
 - Proto `Decision.context = 5`; Go/TS/Python/PHP stubs regenerated;

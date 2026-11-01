@@ -34,7 +34,7 @@ interface NervDecision {
   context?: string;
 }
 
-// Session-start context, keyed by session id ("" = any session). Pushed
+// Session-start context, keyed by session id. Pushed
 // onto the system prompt by experimental.chat.system.transform on every
 // model request, so it persists for the session.
 const sessionContext = new Map<string, string>();
@@ -42,7 +42,7 @@ const sessionContext = new Map<string, string>();
 function dispatch(event: OpenCodeEvent): NervDecision {
   const envelope = JSON.stringify(event);
   try {
-    const result = execFileSync(NERVD_PATH, ["dispatch", "--format", "json"], {
+    const result = execFileSync(NERVD_PATH, ["--adapter", "opencode"], {
       input: envelope,
       encoding: "utf-8",
       timeout: 10_000,
@@ -81,11 +81,16 @@ function handlePassive(event: OpenCodeEvent): void {
 }
 
 export default (ctx: unknown) => ({
-  // Session lifecycle
-  "session.created": async (event: OpenCodeEvent) => {
-    const decision = dispatch(event);
-    if (decision.action !== "block" && decision.context) {
-      sessionContext.set(event.session_id ?? "", decision.context);
+  // Bus events arrive through the generic "event" hook (OpenCode
+  // plugin API v1), not as per-event keys. session.created carries the
+  // session-start decision context.
+  event: async ({ event }: { event: { type: string; properties?: any } }) => {
+    if (event.type === "session.created") {
+      const sid = event.properties?.info?.id ?? "";
+      const decision = dispatch({ type: "session.created", session_id: sid });
+      if (decision.action !== "block" && decision.context) {
+        sessionContext.set(sid, decision.context);
+      }
     }
   },
   "experimental.chat.system.transform": async (
@@ -111,14 +116,28 @@ export default (ctx: unknown) => ({
   },
 
   // Tool lifecycle — before is blocking
-  "tool.execute.before": async (event: OpenCodeEvent) => {
-    handleBlocking(event);
+  "tool.execute.before": async (
+    input: { tool?: string; sessionID?: string },
+    output?: { args?: unknown },
+  ) => {
+    handleBlocking({
+      type: "tool.execute.before",
+      tool: input.tool,
+      session_id: input.sessionID,
+      input: output?.args,
+    });
   },
   "tool.execute.after": async (
-    event: OpenCodeEvent,
+    input: { tool?: string; sessionID?: string; args?: unknown },
     output?: { output?: string },
   ) => {
-    const decision = dispatch({ ...event, type: "tool.execute.after" });
+    const decision = dispatch({
+      type: "tool.execute.after",
+      tool: input.tool,
+      session_id: input.sessionID,
+      input: input.args,
+      output: output?.output,
+    });
     // Model-context channel: text appended to the tool result the model reads.
     if (
       decision.action !== "block" &&
