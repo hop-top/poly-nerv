@@ -7,6 +7,7 @@
 #   nerv_warn           Output warn decision and exit 1
 #   nerv_block          Output block decision and exit 2
 #   nerv_rewrite        Output rewrite decision and exit 3
+#   nerv_context        Queue model-facing context for the next decision
 #
 # Requires: jq
 #
@@ -51,29 +52,45 @@ nerv_payload_json() {
   printf '%s' "$NERV_ENVELOPE" | jq ".payload.$1"
 }
 
+# ── Model context ────────────────────────────────────────────────
+# nerv_context <text>: queue text for the model's context window. Call it
+# before a decision writer; the decision then carries a "context" field.
+# Repeated calls join with newlines; empty text is ignored. Delivery
+# depends on the host CLI (see spec/handler-contract.md, "Context").
+nerv_context() {
+  local text="${1:-}"
+  [ -n "$text" ] || return 0
+  if [ -n "${NERV_CONTEXT:-}" ]; then
+    NERV_CONTEXT="${NERV_CONTEXT}
+${text}"
+  else
+    NERV_CONTEXT="$text"
+  fi
+}
+
 # ── Decision writers ─────────────────────────────────────────────
+# _nerv_emit <action> [message] [rewrite-json]: print one decision line.
+_nerv_emit() {
+  jq -cn --arg action "$1" --arg msg "${2:-}" \
+    --argjson rewrite "${3:-null}" --arg ctx "${NERV_CONTEXT:-}" '
+    {action: $action}
+    + (if $msg != "" then {message: $msg} else {} end)
+    + (if $rewrite != null then {rewrite: $rewrite} else {} end)
+    + (if $ctx != "" then {context: $ctx} else {} end)'
+}
+
 nerv_allow() {
-  echo '{"action":"allow"}'
+  _nerv_emit allow
   exit 0
 }
 
 nerv_warn() {
-  local msg="${1:-}"
-  if [ -n "$msg" ]; then
-    jq -cn --arg msg "$msg" '{"action":"warn","message":$msg}'
-  else
-    echo '{"action":"warn"}'
-  fi
+  _nerv_emit warn "${1:-}"
   exit 1
 }
 
 nerv_block() {
-  local msg="${1:-}"
-  if [ -n "$msg" ]; then
-    jq -cn --arg msg "$msg" '{"action":"block","message":$msg}'
-  else
-    echo '{"action":"block"}'
-  fi
+  _nerv_emit block "${1:-}"
   exit 2
 }
 
@@ -84,6 +101,6 @@ nerv_rewrite() {
     echo "nerv_rewrite: payload must be valid JSON" >&2
     exit 4
   fi
-  printf '{"action":"rewrite","rewrite":%s}\n' "$compact"
+  _nerv_emit rewrite "" "$compact"
   exit 3
 }

@@ -45,6 +45,17 @@ nerv_allow
 | `nerv_warn [msg]`     | Output warn decision; exit 1               |
 | `nerv_block [msg]`    | Output block decision; exit 2              |
 | `nerv_rewrite <json>` | Output rewrite decision; exit 3            |
+| `nerv_context <text>` | Queue text for the model's context; the next decision carries it as `context` (repeated calls join with newlines) |
+
+Context for the model (not the user) — call `nerv_context` before the
+decision writer:
+
+```bash
+nerv_context "src/auth.go: 3 callers outside this package"
+nerv_allow   # {"action":"allow","context":"src/auth.go: 3 callers outside this package"}
+```
+
+Delivery depends on the host CLI; see `spec/handler-contract.md` ("Context").
 
 ## Variables (after `nerv_read_envelope`)
 
