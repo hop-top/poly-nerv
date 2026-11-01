@@ -49,9 +49,6 @@ func TestAdapterRouting_ContextGolden(t *testing.T) {
 		{"openhands", "SessionStart",
 			`{"hook_event_name":"SessionStart","session_id":"s1"}`,
 			`{"action":"allow","additionalContext":"impact: 3 callers"}`},
-		{"vibe", "PostToolUse",
-			`{"event":"ToolResultEvent","session_id":"s1"}`,
-			`{"decision":"allow","hook_specific_output":{"additional_context":"impact: 3 callers"}}`},
 		{"opencode", "SessionStart",
 			`{"type":"session.created","session_id":"s1"}`,
 			`{"action":"allow","context":"impact: 3 callers"}`},
@@ -119,6 +116,16 @@ func TestLookupAdapter_Unknown(t *testing.T) {
 	if err == nil || !strings.Contains(err.Error(), `unknown adapter "bogus"`) ||
 		!strings.Contains(err.Error(), "codex") {
 		t.Fatalf("err = %v", err)
+	}
+	want := "supported: claude, codex, gemini, opencode, openhands)"
+	if !strings.Contains(err.Error(), want) {
+		t.Fatalf("err = %v, want %q", err, want)
+	}
+	for _, name := range []string{"vibe", "aider"} {
+		if _, err := lookupAdapter(name); err == nil ||
+			!strings.Contains(err.Error(), `unknown adapter "`+name+`"`) {
+			t.Fatalf("%s: err = %v, want unknown adapter", name, err)
+		}
 	}
 }
 

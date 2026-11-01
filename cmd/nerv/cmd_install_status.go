@@ -26,7 +26,6 @@ var knownCLIs = []string{
 	"claude",
 	"codex",
 	"gemini",
-	"aider",
 	"goose",
 	"continue",
 	"cline",
@@ -35,7 +34,6 @@ var knownCLIs = []string{
 	"amp",
 	"opencode",
 	"openhands",
-	"vibe",
 	"aide",
 	"zed",
 }
@@ -45,8 +43,8 @@ func installStatusCmd() *cobra.Command {
 		Use:   "status",
 		Short: "Show adapter installation state for known AI CLIs",
 		Long: `Enumerate the AI CLIs that nerv knows how to adapt (claude,
-codex, gemini, aider, goose, continue, cline, roo, kilo, amp,
-opencode, openhands, vibe, aide, zed) and report a row per CLI with
+codex, gemini, goose, continue, cline, roo, kilo, amp,
+opencode, openhands, aide, zed) and report a row per CLI with
 installation state, detected version, nerv adapter status, drift vs
 the original install, and the last install timestamp.
 

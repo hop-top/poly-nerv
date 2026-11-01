@@ -32,15 +32,6 @@ services:
         CLI_VERSION: "${OPENCODE_VERSION:-1.19.3}"
         CLI_PACKAGE: "opencode-ai"
         CLI_INSTALL_METHOD: npm
-  aider:
-    build:
-      context: ..
-      dockerfile: docker/Dockerfile.test
-      args:
-        CLI_NAME: aider
-        CLI_VERSION: "${AIDER_VERSION:-latest}"
-        CLI_PACKAGE: "aider-chat"
-        CLI_INSTALL_METHOD: pip
   goose:
     build:
       context: ..
@@ -50,14 +41,6 @@ services:
         CLI_VERSION: "${GOOSE_VERSION:-latest}"
         CLI_PACKAGE: "goose-cli"
         CLI_INSTALL_METHOD: cargo
-  vibe:
-    build:
-      context: ..
-      dockerfile: docker/Dockerfile.test
-      args:
-        CLI_NAME: vibe
-        CLI_VERSION: "${VIBE_VERSION:-latest}"
-        CLI_PACKAGE: "@mistralai/vibe"
   openhands:
     build:
       context: ..

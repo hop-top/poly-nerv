@@ -20,8 +20,9 @@ code; upstream behavior is cited where a cell depends on it.
 | opencode | `>=1.19.3 <2.0.0` / 1.19.3 | `nervd --adapter opencode`; bridge plugin | ✓ PreToolUse only | ◐ bridge log | ✗ ignored | ✓ PostToolUse, SessionStart | ✓ Start, End, Stop | ⚠ [opencode](#flag-opencode) |
 | goose | no range, no pin | none (not an `--adapter` route); MCP extension `nerv-bridge` | ◐ PreToolUse, Stop | ◐ decision `message` | ✗ | ✗ no channel | ✓ Start, End, Stop | ⚠ [goose](#flag-goose) |
 | openhands | no range, no pin | `nervd --adapter openhands`; stdin JSON | ⚠ via exit 2 | ◐ `reason` + stderr | ✗ | ◐ SessionStart, UserPromptSubmit | ◐ Start, End; Stop needs core change | ⚠ [openhands](#flag-openhands) |
-| vibe | no range, no pin | `nervd --adapter vibe`; stdin JSON | ⚠ not honored | ✗ | ✗ | ◐ post_tool only | ◐ synthesized | ⚠ [vibe](#flag-vibe) |
-| aider | no range, no `versions.yaml` entry | `nervd --adapter aider lint <file>...` / `test`; argv, never stdin | ◐ post-edit only | ◐ stderr, user only | ✗ | ✗ no channel | ✗ none | ⚠ [aider](#flag-aider) |
+
+Vibe (Mistral) and Aider are not supported: no hook protocol, or the
+adapter did not reach parity.
 
 Legend: `✓` supported | `◐` partial (see gap) | `✗` none or no host
 channel | `⚠` known bug, see detail | `?` adapter emits it, host
@@ -67,45 +68,6 @@ Adapter: `adapters/openhands/translate.go` `FromEventDecision`.
 - Stop is `close:` in `capabilities.yaml` ("API-ready, needs core loop
   change").
 
-### <a id="flag-vibe"></a>⚠ Vibe — block not honored; hooks likely inert on current Vibe
-
-Adapter: `adapters/vibe/translate.go`, `adapters/vibe/adapter.go`,
-`cmd/nervd/adapter.go` `decodeVibe`. Upstream:
-[`SKILL.md`](https://github.com/mistralai/mistral-vibe/blob/main/vibe/plugins/builtins/vibe/skills/vibe/SKILL.md)
-(Hooks, "Structured-response schema").
-
-1. **Block shape.** Adapter emits `{"decision":"block",...}` and exits
-   2. Vibe's schema is `decision: "allow" | "deny"`; and per its
-   exit-code table only exit 0 with a valid JSON object is acted on.
-   Any non-zero exit is the "failure path": a UI warning, then the
-   action proceeds (fail open). Vibe has no special meaning for exit 2.
-   Impact: a nerv `block` is **not** honored. With `strict = true` on a
-   `pre_tool` hook the failure escalates to a deny, with the raw
-   stdout/stderr text as reason; `post_agent` cannot be strict. nerv's
-   installer does not write `strict`.
-2. **Inbound decode.** Vibe sends `hook_event_name` (`pre_tool`,
-   `post_tool`, `post_agent`). `decodeVibe` reads `event` and expects
-   class names (`ToolCallEvent`, ...). Real Vibe input fails with
-   `vibe: missing event field` and exit 1, which is also the failure
-   path, so nothing is evaluated. Probed:
-   `echo '{"hook_event_name":"pre_tool",...}' | nervd --adapter vibe`
-   exits 1.
-3. **Install format.** The installer appends `[hooks]` and
-   `[[hooks.handlers]]` (`event = "ToolCallEvent"`, `timeout = 30000`)
-   to `config.toml`. Vibe reads `hooks.toml` with `[[hooks]]` entries
-   (`name`, `type = pre_tool|post_tool|post_agent`, `command`,
-   `timeout` in seconds as a float). Whether current Vibe reads the
-   installed block at all is unverified; by the documented format it
-   does not.
-4. **Rewrite.** Vibe supports `hook_specific_output.tool_input` on
-   `pre_tool`; the adapter maps rewrite to `allow` and drops it.
-5. **Warn.** Emitted as `reason`, which Vibe uses only for deny. The
-   UI-visible field is `system_message` (not emitted).
-6. Context: `hook_specific_output.additional_context` on `post_tool`
-   matches upstream; `pre_tool` and `post_agent` have none.
-
-Net: treat Vibe as observation-unverified until items 1-3 are fixed.
-
 ### <a id="flag-opencode"></a>⚠ OpenCode — plugin API v1 only; permissions observation-only; rewrite ignored
 
 - Supported: plugin API v1, `>=1.19.3 <2.0.0` (verified against
@@ -126,29 +88,6 @@ Net: treat Vibe as observation-unverified until items 1-3 are fixed.
 - No `PreCompact` (only post-compaction `session.compacted`).
   `PostToolUseFailure` is undeclared and renders `-`.
 
-### <a id="flag-aider"></a>⚠ Aider — no hook protocol; post-edit lint/test commands only
-
-- Extension points are `lint-cmd` (FileChanged, edited file as trailing
-  argv) and `test-cmd` (PostToolUse, no args), installed as
-  `nervd --adapter aider lint|test`. Both run after Aider applied the
-  edit (`aider/coders/base_coder.py` `lint_edited`, `cmd_test`), so
-  there is no pre-tool blocking: PreToolUse and session events are
-  uncovered.
-- Block = exit 1 with the message on stdout, which Aider feeds back to
-  the model as an error-repair prompt. Allow and warn exit 0; warn text
-  goes to stderr, user only. Rewrite is dropped.
-- Context: no channel. Output reaches the model only on non-zero exit,
-  so context would read as a failure (`aider/commands.py`
-  `cmd_test`/`cmd_run`, `aider/linter.py` `run_cmd`); dropped.
-- A fresh global `lint-cmd` **replaces Aider's built-in linters for all
-  languages**. An existing command is chained as
-  `f(){ nervd ... "$@" && <orig> "$@"; }; f`; per-language
-  `python: cmd` entries are wrapped per language; YAML list forms are
-  rejected.
-- No `versions.yaml` entry and no `cli_version_range`.
-- `PostToolUseFailure` is absent from `adapters/aider/capabilities.yaml`
-  (neither synthesized nor unsupported); the matrix renders it `?`.
-
 ### <a id="flag-goose"></a>⚠ Goose — observation-only except PreToolUse/Stop block; bridge command does not resolve
 
 - Goose hooks are observation-only except blocking on PreToolUse and
@@ -162,7 +101,7 @@ Net: treat Vibe as observation-unverified until items 1-3 are fixed.
   extension `nerv-bridge` with `command: nerv`, `args: [dispatch, goose]`
   (`adapters/goose/adapter.go`), and `nerv dispatch` is not a `nerv`
   subcommand (`nerv dispatch goose` exits 2 with "unknown command").
-  The same defect was fixed for Aider, Gemini and Codex; Goose still
+  The same defect was fixed for Gemini and Codex; Goose still
   has it, so installed Goose hooks do not reach nervd.
 - No `versions.yaml` entry and no `cli_version_range`.
 
@@ -198,7 +137,4 @@ Checked against upstream HEAD, Nov 2026: openai/codex
 `ctx.session.hook("context")`, per
 `services/www/src/docs/content/build/plugins/migrate-v1.mdx`);
 OpenHands/software-agent-sdk `openhands-sdk/openhands/sdk/hooks/`
-(`executor.py`, `conversation_hooks.py`); mistralai/mistral-vibe
-`vibe/plugins/builtins/vibe/skills/vibe/SKILL.md` (Hooks);
-aaif-goose/goose `documentation/docs/guides/context-engineering/hooks.md`;
-Aider-AI/aider `aider/commands.py`.
+(`executor.py`, `conversation_hooks.py`); aaif-goose/goose `documentation/docs/guides/context-engineering/hooks.md`.

@@ -197,7 +197,7 @@ LLM-driven hook authoring helper:
 Host-agnostic plugin tree lives at `.agents/`; the plugin manifest
 is [`.agents/.claude-plugin/plugin.json`](.agents/.claude-plugin/plugin.json).
 
-## 36 canonical events, 8 CLIs
+## 36 canonical events, 6 CLIs
 
 nerv defines 36 canonical events: 26 native (Claude Code's
 PreToolUse-class surface) plus 4 extension (gemini/opencode), 2
@@ -215,8 +215,6 @@ Claude Code superset; the full taxonomy lives at
 | Goose       | 11     | 11          | 22/26 |
 | OpenHands   | 5      | 15          | 20/26 |
 | Codex CLI   | 3      | 12          | 15/26 |
-| Vibe        | 6      | 8           | 14/26 |
-| Aider       | 0      | 2           | 2/26  |
 
 Events cover the full lifecycle: session, prompt, tool use,
 permissions, subagents, tasks, context compaction, file changes,

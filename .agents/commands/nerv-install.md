@@ -16,7 +16,7 @@ new adapters land.
 
 - First positional: CLI name (optional). Must be one of the values
   derived from `adapters/`. As of writing: `claude | codex | gemini |
-  opencode | openhands | aider | goose | vibe`.
+  opencode | openhands | goose`.
 - `--all`: install every adapter the registry knows about.
 - All other flags pass through unchanged (`--dry-run`, etc.).
 

@@ -17,7 +17,6 @@ import (
 
 	"gopkg.in/yaml.v3"
 
-	"hop.top/nerv/adapters/aider"
 	"hop.top/nerv/adapters/claude"
 	"hop.top/nerv/adapters/codex"
 	"hop.top/nerv/adapters/gemini"
@@ -25,7 +24,6 @@ import (
 	"hop.top/nerv/adapters/internal"
 	"hop.top/nerv/adapters/opencode"
 	"hop.top/nerv/adapters/openhands"
-	"hop.top/nerv/adapters/vibe"
 )
 
 // adapterEntry bundles a HookAdapter with metadata for table-driven tests.
@@ -44,28 +42,6 @@ func allAdapters(t *testing.T) []adapterEntry {
 	home := t.TempDir()
 
 	return []adapterEntry{
-		{
-			name:             "aider",
-			adapter:          &aider.Adapter{},
-			capabilitiesFile: "aider/capabilities.yaml",
-			configFormat:     "yaml",
-			translateInputs: [][]byte{
-				mustJSON(t, map[string]any{
-					"hook_event_name": "PreToolUse",
-					"session_id":      "conf-a1",
-					"tool_name":       "edit",
-				}),
-				mustJSON(t, map[string]any{
-					"hook_event_name": "SessionStart",
-					"session_id":      "conf-a2",
-				}),
-				mustJSON(t, map[string]any{
-					"hook_event_name": "PostToolUse",
-					"session_id":      "conf-a3",
-					"tool_name":       "test",
-				}),
-			},
-		},
 		{
 			name:             "claude",
 			adapter:          claude.NewAdapter(home),
@@ -176,28 +152,6 @@ func allAdapters(t *testing.T) []adapterEntry {
 					"hook_event_name": "PostToolUse",
 					"session_id":      "conf-c3",
 					"tool_name":       "shell",
-				}),
-			},
-		},
-		{
-			name:             "vibe",
-			adapter:          &vibe.Adapter{},
-			capabilitiesFile: "vibe/capabilities.yaml",
-			configFormat:     "toml",
-			translateInputs: [][]byte{
-				mustJSON(t, map[string]any{
-					"event":      "ToolCallEvent",
-					"session_id": "conf-v1",
-					"tool_name":  "Write",
-				}),
-				mustJSON(t, map[string]any{
-					"event":      "UserMessageEvent",
-					"session_id": "conf-v2",
-				}),
-				mustJSON(t, map[string]any{
-					"event":      "ToolResultEvent",
-					"session_id": "conf-v3",
-					"cwd":        "/tmp",
 				}),
 			},
 		},

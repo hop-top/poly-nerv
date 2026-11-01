@@ -10,6 +10,12 @@ in the first tagged release.
 
 ## Unreleased
 
+### Removed
+
+- Vibe (Mistral) and Aider adapters, with their `nervd --adapter vibe` /
+  `aider` routes, argv input path, install wiring, CI containers, and
+  docs. Neither reached parity; unsupported harnesses.
+
 ### Handler decision `context`
 
 - **Optional `context` string on every decision** — model-facing text,
@@ -29,20 +35,15 @@ in the first tagged release.
   reject unknown fields, so dropped).
 - OpenHands adapter: `FromEventDecision` emits top-level
   `additionalContext` on SessionStart, UserPromptSubmit.
-- Vibe adapter: `FromEventDecision` emits
-  `hook_specific_output.additional_context` on post_tool
-  (ToolResultEvent).
 - OpenCode adapter: `FromEventDecision` + bridge plugin deliver context
   via `tool.execute.after` output and
   `experimental.chat.system.transform` (session start).
-- **`nervd --adapter <cli>`** (codex, gemini, opencode, openhands,
-  vibe): explicit adapter routing in stateless mode. Input decodes and
+- **`nervd --adapter <cli>`** (codex, gemini, opencode, openhands): explicit adapter routing in stateless mode. Input decodes and
   the decision encodes through that CLI's translator with the real
   native event name, so `context` reaches the model. Unknown adapter
   exits 2. Without the flag behavior is unchanged (claude dialect for
   `hook_event_name` input), keeping already-installed hooks working.
-- `nerv install` writes `nervd --adapter openhands` / `nervd --adapter
-  vibe`; legacy bare `nervd` entries are upgraded on reinstall.
+- `nerv install` writes `nervd --adapter openhands`; legacy bare `nervd` entries are upgraded on reinstall.
 - OpenCode bridge: session start routes through the plugin `event`
   hook (`session.created`); tool hooks send typed events; invokes
   `nervd --adapter opencode` (previously `nervd dispatch --format json`,
@@ -64,20 +65,7 @@ in the first tagged release.
   `nerv-adapter gemini <event>`) and `nervd --adapter codex` (was
   `nerv dispatch`); neither legacy command resolved to a binary. Legacy
   entries are upgraded on reinstall.
-- Aider: `nerv install` writes `nervd --adapter aider lint|test` into
-  `lint-cmd`/`test-cmd` (was `nerv dispatch aider ...`, a nonexistent
-  subcommand, so hooks never ran). `nervd --adapter aider` takes argv
-  (verb plus the files Aider appends), never reads stdin; lint maps to
-  FileChanged, test to PostToolUse. block exits 1 with the message on
-  stdout (Aider feeds it to the model); allow/warn exit 0; rewrite and
-  context dropped. Existing commands chain as
-  `f(){ nervd ... "$@" && <orig> "$@"; }; f` (original's output and
-  exit status preserved, paths with spaces safe, quoted YAML decoded,
-  `python: cmd` form wrapped per language, YAML lists rejected).
-  Legacy entries upgrade in place, idempotently. Capabilities corrected:
-  lint/test run after the edit, so PreToolUse and session events are no
-  longer claimed.
-- Goose and Aider have no model-context channel and drop it; see
+- Goose has no model-context channel and drop it; see
   capability-matrix for sources.
 - Proto `Decision.context = 5`; Go/TS/Python/PHP stubs regenerated;
   Python and TS handler `Decision` types gain `context`.
@@ -88,8 +76,7 @@ in the first tagged release.
 
 - `docs/parity.md`: one-page harness parity summary (versions,
   entrypoint, block/warn/rewrite/context) with flagged gaps for
-  OpenHands, Vibe, OpenCode, Aider, Goose, Codex; README table
-  corrected for Aider (2/26).
+  OpenHands, OpenCode, Goose, Codex.
 
 ### Project rename
 

@@ -69,13 +69,12 @@ func TestInstallStatusCmd_OutputFormat(t *testing.T) {
 }
 
 func TestInstallStatusCmd_KnownCLIs(t *testing.T) {
-	// 15 = 13 originals + vibe + openhands (added in #16).
-	if len(knownCLIs) != 15 {
-		t.Errorf("knownCLIs has %d entries, want 15", len(knownCLIs))
+	if len(knownCLIs) != 13 {
+		t.Errorf("knownCLIs has %d entries, want 13", len(knownCLIs))
 	}
 
-	// Verify the two additions are present.
-	want := map[string]bool{"vibe": false, "openhands": false}
+	// Verify openhands is present; dropped CLIs are absent.
+	want := map[string]bool{"openhands": false}
 	for _, name := range knownCLIs {
 		if _, ok := want[name]; ok {
 			want[name] = true

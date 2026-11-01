@@ -3,7 +3,6 @@
 package adapters
 
 import (
-	"hop.top/nerv/adapters/aider"
 	"hop.top/nerv/adapters/claude"
 	"hop.top/nerv/adapters/codex"
 	"hop.top/nerv/adapters/gemini"
@@ -11,7 +10,6 @@ import (
 	"hop.top/nerv/adapters/internal"
 	"hop.top/nerv/adapters/opencode"
 	"hop.top/nerv/adapters/openhands"
-	"hop.top/nerv/adapters/vibe"
 )
 
 // HookAdapter re-exports the internal interface for external use.
@@ -32,21 +30,19 @@ var NewInstaller = internal.NewInstaller
 func Registry() map[string]HookAdapter {
 	home := ""
 	return map[string]HookAdapter{
-		"aider":     &aider.Adapter{},
 		"claude":    claude.NewAdapter(home),
 		"codex":     codex.New(),
 		"gemini":    &gemini.Adapter{},
 		"goose":     &goose.Adapter{},
 		"opencode":  &opencode.Adapter{},
 		"openhands": &openhands.Adapter{},
-		"vibe":      &vibe.Adapter{},
 	}
 }
 
 // SupportedCLIs returns the sorted list of CLI names with adapters.
 func SupportedCLIs() []string {
 	return []string{
-		"aider", "claude", "codex", "gemini", "goose",
-		"opencode", "openhands", "vibe",
+		"claude", "codex", "gemini", "goose",
+		"opencode", "openhands",
 	}
 }
