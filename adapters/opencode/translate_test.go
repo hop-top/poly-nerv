@@ -176,3 +176,35 @@ func TestFromDecision_Rewrite(t *testing.T) {
 		t.Error("Rewrite is nil, want non-nil")
 	}
 }
+
+// TestToEnvelope_BridgeWireShapes feeds ToEnvelope the exact objects the
+// bridge's event hook sends for each routed bus event.
+func TestToEnvelope_BridgeWireShapes(t *testing.T) {
+	tests := []struct {
+		name string
+		wire string
+		want string
+	}{
+		{"session.created", `{"type":"session.created","session_id":"ses_1"}`, "SessionStart"},
+		{"session.deleted", `{"type":"session.deleted","session_id":"ses_1"}`, "SessionEnd"},
+		{"session.idle", `{"type":"session.idle","session_id":"ses_1"}`, "Stop"},
+		{"session.error", `{"type":"session.error","session_id":"ses_1","error":"boom"}`, "StopFailure"},
+		{"session.compacted", `{"type":"session.compacted","session_id":"ses_1"}`, "PostCompact"},
+		{"file.edited", `{"type":"file.edited","path":"/tmp/a.go","session_id":""}`, "FileChanged"},
+		{"permission.asked", `{"type":"permission.asked","session_id":"ses_1","input":{"id":"per_1","permission":"bash","patterns":["rm *"]}}`, "PermissionRequest"},
+		{"permission.replied reject", `{"type":"permission.replied","session_id":"ses_1","decision":"deny"}`, "PermissionDenied"},
+		{"tui.prompt.append", `{"type":"tui.prompt.append","input":"hello"}`, "UserPromptSubmit"},
+		{"todo.updated", `{"type":"todo.updated","session_id":"ses_1","input":[{"id":"t1","status":"completed"}]}`, "TaskCompleted"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			env, err := ToEnvelope([]byte(tt.wire), "")
+			if err != nil {
+				t.Fatalf("ToEnvelope: %v", err)
+			}
+			if env.Event != tt.want {
+				t.Errorf("event = %q, want %q", env.Event, tt.want)
+			}
+		})
+	}
+}

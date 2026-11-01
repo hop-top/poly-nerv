@@ -139,7 +139,7 @@ depends on.
 | claude | `hookSpecificOutput.additionalContext` (with `hookEventName`); exit code unchanged | SessionStart, SubagentStart, UserPromptSubmit, PreToolUse, PostToolUse, PostToolUseFailure, Stop, SubagentStop |
 | gemini | `hookSpecificOutput.additionalContext` | native SessionStart, BeforeAgent, AfterTool |
 | codex | `hookSpecificOutput.additionalContext` (with `hookEventName`); same encoding as claude | SessionStart, UserPromptSubmit, PreToolUse, PostToolUse (Stop and compaction outputs reject the field, so dropped) |
-| opencode | bridge plugin appends to the tool result (`tool.execute.after` `output.output`) or pushes onto the system prompt (`experimental.chat.system.transform`) | native `tool.execute.after` (PostToolUse), `session.created` (SessionStart) |
+| opencode | bridge plugin appends to the tool result (`tool.execute.after` `output.output`) or pushes onto the system prompt (`experimental.chat.system.transform`) | native `tool.execute.after` (PostToolUse), `session.created` (SessionStart, delivered via the plugin `event` hook); OpenCode plugin API v1, `>=1.19.3 <2.0.0` |
 | openhands | top-level `additionalContext` | SessionStart, UserPromptSubmit |
 | vibe | `hook_specific_output.additional_context` | `post_tool` (ToolResultEvent) |
 | goose, aider | none — dropped | — |

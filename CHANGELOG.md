@@ -47,6 +47,19 @@ in the first tagged release.
   hook (`session.created`); tool hooks send typed events; invokes
   `nervd --adapter opencode` (previously `nervd dispatch --format json`,
   which nervd never accepted).
+- OpenCode bridge: all bus events (`session.deleted`, `session.idle`,
+  `session.error`, `session.compacted`, `file.edited`, `permission.asked`,
+  `permission.replied`, `tui.prompt.append`, `todo.updated`) now route
+  through the `event` hook and dispatch on `event.type`; the dead
+  top-level keys v1 never called are removed. Payload fields follow the
+  runtime shapes (`properties.sessionID`/`info.id`, `file`, `reply`,
+  `text`, `todos`). `permission.replied` maps only `reject` to
+  PermissionDenied; `todo.updated` reports each completed todo once.
+  `event` hook errors are logged, not thrown.
+- OpenCode supported range pinned to plugin API v1 (`>=1.19.3 <2.0.0`);
+  `versions.yaml` opencode entry now `opencode-ai` via npm at `1.19.3`
+  (was Go install of 0.3-0.5, which predate the plugin API). v2.x uses a
+  different plugin API and is not supported.
 - `nerv install` also writes `nervd --adapter gemini` (was
   `nerv-adapter gemini <event>`) and `nervd --adapter codex` (was
   `nerv dispatch`); neither legacy command resolved to a binary. Legacy

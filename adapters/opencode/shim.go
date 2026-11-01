@@ -76,21 +76,81 @@ function handleBlocking(event: OpenCodeEvent): void {
   }
 }
 
-function handlePassive(event: OpenCodeEvent): void {
-  dispatch(event);
+// Completed todo ids already reported, per session, so repeated
+// todo.updated snapshots only fire for newly completed items.
+const completedTodos = new Map<string, Set<string>>();
+
+function errorText(err: any): string | undefined {
+  if (!err) return undefined;
+  if (typeof err === "string") return err;
+  return err.data?.message ?? err.message ?? err.name;
 }
 
-export default (ctx: unknown) => ({
-  // Bus events arrive through the generic "event" hook (OpenCode
-  // plugin API v1), not as per-event keys. session.created carries the
-  // session-start decision context.
+// Maps an OpenCode bus event (the {type, properties} the "event" hook
+// receives) to the wire event nervd translates. Returns null for events
+// nerv does not map or that must not be reported.
+function mapBusEvent(type: string, p: any): OpenCodeEvent | null {
+  p = p ?? {};
+  const sid: string = p.sessionID ?? p.info?.id ?? "";
+  switch (type) {
+    case "session.created":
+    case "session.deleted":
+    case "session.idle":
+    case "session.compacted":
+      return { type, session_id: sid };
+    case "session.error":
+      return { type, session_id: sid, error: errorText(p.error) ?? "unknown error" };
+    case "file.edited":
+      return { type, path: p.file, session_id: sid };
+    case "permission.asked":
+      return {
+        type,
+        session_id: sid,
+        input: { id: p.id, permission: p.permission, patterns: p.patterns },
+      };
+    case "permission.replied":
+      // Only a rejected request maps (PermissionDenied).
+      if (p.reply !== "reject") return null;
+      return { type, session_id: sid, decision: "deny" };
+    case "tui.prompt.append":
+      return { type, input: p.text };
+    case "todo.updated": {
+      const seen = completedTodos.get(sid) ?? new Set<string>();
+      const fresh = (p.todos ?? []).filter(
+        (t: any) => t?.status === "completed" && !seen.has(t.id),
+      );
+      if (fresh.length === 0) return null;
+      for (const t of fresh) seen.add(t.id);
+      completedTodos.set(sid, seen);
+      return { type, session_id: sid, input: fresh };
+    }
+    default:
+      return null;
+  }
+}
+
+export default (_ctx: unknown) => ({
+  // Every bus event (session.*, file.edited, permission.*, todo.updated,
+  // tui.prompt.append) arrives through this one hook as
+  // { event: { type, properties } }; OpenCode plugin API v1 has no
+  // per-event top-level keys for them. It is called fire-and-forget, so
+  // errors are logged, never thrown.
   event: async ({ event }: { event: { type: string; properties?: any } }) => {
-    if (event.type === "session.created") {
-      const sid = event.properties?.info?.id ?? "";
-      const decision = dispatch({ type: "session.created", session_id: sid });
-      if (decision.action !== "block" && decision.context) {
-        sessionContext.set(sid, decision.context);
+    try {
+      const oe = mapBusEvent(event.type, event.properties);
+      if (!oe) return;
+      const decision = dispatch(oe);
+      const sid = oe.session_id ?? "";
+      if (event.type === "session.created") {
+        if (decision.action !== "block" && decision.context) {
+          sessionContext.set(sid, decision.context);
+        }
+      } else if (event.type === "session.deleted") {
+        sessionContext.delete(sid);
+        completedTodos.delete(sid);
       }
+    } catch (err) {
+      console.error("[nerv] event hook failed:", event.type, err);
     }
   },
   "experimental.chat.system.transform": async (
@@ -102,20 +162,9 @@ export default (ctx: unknown) => ({
       if (text) output.system.push(text);
     }
   },
-  "session.deleted": async (event: OpenCodeEvent) => {
-    handlePassive(event);
-  },
-  "session.idle": async (event: OpenCodeEvent) => {
-    handlePassive(event);
-  },
-  "session.error": async (event: OpenCodeEvent) => {
-    handlePassive(event);
-  },
-  "session.compacted": async (event: OpenCodeEvent) => {
-    handlePassive(event);
-  },
 
-  // Tool lifecycle — before is blocking
+  // Tool lifecycle. Throwing from tool.execute.before aborts the tool
+  // call (plugin.trigger does not catch); the message reaches the model.
   "tool.execute.before": async (
     input: { tool?: string; sessionID?: string },
     output?: { args?: unknown },
@@ -147,29 +196,6 @@ export default (ctx: unknown) => ({
     ) {
       output.output += "\n" + decision.context;
     }
-  },
-
-  // File lifecycle
-  "file.edited": async (event: OpenCodeEvent) => {
-    handlePassive(event);
-  },
-
-  // Permission lifecycle
-  "permission.asked": async (event: OpenCodeEvent) => {
-    handlePassive(event);
-  },
-  "permission.replied": async (event: OpenCodeEvent) => {
-    handlePassive(event);
-  },
-
-  // TUI
-  "tui.prompt.append": async (event: OpenCodeEvent) => {
-    handlePassive(event);
-  },
-
-  // Todo
-  "todo.updated": async (event: OpenCodeEvent) => {
-    handlePassive(event);
   },
 });
 `

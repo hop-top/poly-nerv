@@ -101,7 +101,7 @@ the opencode bridge; legacy commands are upgraded on reinstall.
 |-----------|:-----------------:|------------------|
 | claude    | ✓ | `hookSpecificOutput.additionalContext` on SessionStart, SubagentStart, UserPromptSubmit, PreToolUse, PostToolUse, PostToolUseFailure, Stop, SubagentStop |
 | gemini    | ✓ end to end | hook command `nervd --adapter gemini`; `hookSpecificOutput.additionalContext` on native SessionStart, BeforeAgent (SubagentStart), AfterTool (PostToolUse) via `gemini.FromEventDecision` |
-| opencode  | ✓ end to end | `nerv install opencode` bridge calls `nervd --adapter opencode`; bridge plugin: `tool.execute.after` appends to `output.output` (PostToolUse); `session.created` (delivered through the plugin `event` hook) context pushed via `experimental.chat.system.transform` (SessionStart); via `opencode.FromEventDecision`. No channel on `tool.execute.before` (args only) |
+| opencode  | ✓ end to end | `nerv install opencode` bridge calls `nervd --adapter opencode`; bridge plugin: `tool.execute.after` appends to `output.output` (PostToolUse); `session.created` (delivered through the plugin `event` hook) context pushed via `experimental.chat.system.transform` (SessionStart); via `opencode.FromEventDecision`. No channel on `tool.execute.before` (args only). Supported range: OpenCode plugin API v1, `>=1.19.3 <2.0.0`; v2.x plugins use a different API and are not covered |
 | codex     | ✓ end to end | hook command `nervd --adapter codex`; `hookSpecificOutput.additionalContext` on SessionStart, UserPromptSubmit, PreToolUse, PostToolUse via `codex.FromEventDecision`; Stop / SubagentStop / compaction outputs reject unknown fields, so dropped there |
 | goose     | - | hooks are observation-only except PreToolUse/Stop block; hook stdout is read only for the decision and, on SessionStart, a user-visible `banner` stored with `agent_visible=false` (`crates/goose/src/hooks/mod.rs` `emit_collecting_banners`, `agents/state_machine/session.rs` `session_start_message`) |
 | openhands | ✓ end to end | hook command `nervd --adapter openhands`; top-level `additionalContext` on SessionStart (emitted as a message after the system prompt) and UserPromptSubmit (appended to extended content) via `openhands.FromEventDecision`; PreToolUse/PostToolUse results are not consumed |
@@ -110,7 +110,7 @@ the opencode bridge; legacy commands are upgraded on reinstall.
 
 Sources (checked against upstream HEAD, Nov 2026): openai/codex
 `codex-rs/hooks/schema/generated/*.command.output.schema.json` and
-`codex-rs/hooks/src/events/*.rs`; sst/opencode v1.19.5
+`codex-rs/hooks/src/events/*.rs`; sst/opencode v1.19.3
 `packages/plugin/src/index.ts` (V1 `Hooks`),
 `packages/opencode/src/session/tools.ts` and `session/llm/request.ts`
 (V2 equivalents: `ctx.tool.hook("execute.after")`,
@@ -145,6 +145,15 @@ Recurring blockers (lifted from each `capabilities.yaml`'s
   emit. `Notification` is reachable only by wrapping the Codex
   binary. See [`adapters/codex/capabilities.yaml`](../adapters/codex/capabilities.yaml)
   for technique + cost annotations (`shell`, `daemon`, `binary_wrap`).
+- **OpenCode bus events** — `session.*`, `file.edited`, `permission.*`,
+  `todo.updated`, `tui.prompt.append` reach the bridge only through the
+  plugin `event` hook (`{event: {type, properties}}`); v1 has no
+  per-event top-level plugin keys. `permission.replied` carries
+  `reply: once|always|reject`; only `reject` maps to `PermissionDenied`.
+  The `permission.ask` hook is declared in `packages/plugin/src/index.ts`
+  but never triggered by the runtime (v1.19.3), so permission events are
+  observation-only. `todo.updated` fires `TaskCompleted` once per newly
+  completed todo id. Blocking is `throw` from `tool.execute.before`.
 - **OpenCode `PreCompact`** — OpenCode emits `session.compacted`
   (post-) but no pre-compaction signal.
 - **OpenHands worktree + notifications + config** — the SDK PR

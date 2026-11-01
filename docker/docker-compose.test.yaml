@@ -29,9 +29,9 @@ services:
       dockerfile: docker/Dockerfile.test
       args:
         CLI_NAME: opencode
-        CLI_VERSION: "${OPENCODE_VERSION:-latest}"
-        CLI_PACKAGE: "github.com/sst/opencode"
-        CLI_INSTALL_METHOD: go
+        CLI_VERSION: "${OPENCODE_VERSION:-1.19.3}"
+        CLI_PACKAGE: "opencode-ai"
+        CLI_INSTALL_METHOD: npm
   aider:
     build:
       context: ..
