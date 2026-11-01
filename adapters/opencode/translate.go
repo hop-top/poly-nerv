@@ -127,15 +127,43 @@ type DecisionJSON struct {
 	Action  string          `json:"action"`
 	Message string          `json:"message,omitempty"`
 	Rewrite json.RawMessage `json:"rewrite,omitempty"`
+	// Context is model-facing text; the bridge applies it only on
+	// contextEvents.
+	Context string `json:"context,omitempty"`
+}
+
+// contextEvents are the OpenCode events whose bridge handler has a
+// model-context channel: tool.execute.after (appended to the tool
+// output the model reads) and session.created (pushed onto the system
+// prompt via experimental.chat.system.transform). tool.execute.before
+// only exposes args; tui.prompt.append is not a chat message hook.
+//
+// Source: sst/opencode v1.19.5 packages/plugin/src/index.ts (Hooks) and
+// packages/opencode/src/session/{tools,llm/request}.ts.
+var contextEvents = map[string]bool{
+	OCToolExecAfter:  true,
+	OCSessionCreated: true,
 }
 
 // FromDecision converts a nerv merger.Decision into the JSON the
 // TypeScript shim will read. For blocking events, the shim uses
 // the action to decide whether to throw (block) or pass through.
+// It has no event name, so Context is dropped; use FromEventDecision
+// to deliver it.
 func FromDecision(d merger.Decision) ([]byte, error) {
+	return FromEventDecision(d, "")
+}
+
+// FromEventDecision is FromDecision for a known OpenCode event name. A
+// non-empty Context on a non-block decision is included when the event
+// is in contextEvents, and dropped otherwise.
+func FromEventDecision(d merger.Decision, ocEvent string) ([]byte, error) {
 	dj := DecisionJSON{
 		Action:  string(d.Action),
 		Message: d.Message,
+	}
+	if d.Action != merger.Block && contextEvents[ocEvent] {
+		dj.Context = d.Context
 	}
 
 	if d.Rewrite != nil {

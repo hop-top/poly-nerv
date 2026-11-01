@@ -105,11 +105,37 @@ func ToEnvelope(vibeEvent map[string]any) (*envelope.Envelope, error) {
 type vibeDecision struct {
 	Decision string `json:"decision"`
 	Reason   string `json:"reason,omitempty"`
+	// HookSpecificOutput carries additional_context for post_tool hooks.
+	HookSpecificOutput map[string]any `json:"hook_specific_output,omitempty"`
+}
+
+// contextEvents are the Vibe events whose hook_specific_output
+// .additional_context reaches the model: post_tool only (text is
+// appended to the tool output the LLM sees). pre_tool and post_agent
+// have no context field.
+//
+// Source: mistralai/mistral-vibe vibe/plugins/builtins/vibe/skills/vibe
+// /SKILL.md "Structured-response schema" and "Event-specific payloads".
+// Keys are the adapter's native name and the hook_event_name.
+var contextEvents = map[string]bool{
+	"ToolResultEvent": true,
+	"post_tool":       true,
 }
 
 // FromDecision converts a nerv merger Decision into a Vibe-native
-// decision map and exit code.
+// decision map and exit code. It has no event name, so Context is
+// dropped; use FromEventDecision to deliver it.
 func FromDecision(d merger.Decision) (map[string]any, int, error) {
+	return FromEventDecision(d, "")
+}
+
+// FromEventDecision is FromDecision for a known Vibe event name. A
+// non-empty Context on a non-block decision is emitted as
+// hook_specific_output.additional_context when the event is in
+// contextEvents, and dropped otherwise.
+func FromEventDecision(
+	d merger.Decision, vibeEvent string,
+) (map[string]any, int, error) {
 	vibeAction, ok := nervActionToVibe[d.Action]
 	if !ok {
 		return nil, 0, fmt.Errorf(
@@ -128,6 +154,12 @@ func FromDecision(d merger.Decision) (map[string]any, int, error) {
 
 	if d.Message != "" {
 		out.Reason = d.Message
+	}
+
+	if d.Context != "" && d.Action != merger.Block && contextEvents[vibeEvent] {
+		out.HookSpecificOutput = map[string]any{
+			"additional_context": d.Context,
+		}
 	}
 
 	raw, err := json.Marshal(out)

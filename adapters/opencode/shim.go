@@ -31,7 +31,13 @@ interface NervDecision {
   action: "allow" | "warn" | "block" | "rewrite";
   message?: string;
   rewrite?: unknown;
+  context?: string;
 }
+
+// Session-start context, keyed by session id ("" = any session). Pushed
+// onto the system prompt by experimental.chat.system.transform on every
+// model request, so it persists for the session.
+const sessionContext = new Map<string, string>();
 
 function dispatch(event: OpenCodeEvent): NervDecision {
   const envelope = JSON.stringify(event);
@@ -77,7 +83,19 @@ function handlePassive(event: OpenCodeEvent): void {
 export default (ctx: unknown) => ({
   // Session lifecycle
   "session.created": async (event: OpenCodeEvent) => {
-    handlePassive(event);
+    const decision = dispatch(event);
+    if (decision.action !== "block" && decision.context) {
+      sessionContext.set(event.session_id ?? "", decision.context);
+    }
+  },
+  "experimental.chat.system.transform": async (
+    input: { sessionID?: string },
+    output: { system: string[] },
+  ) => {
+    for (const key of new Set(["", input.sessionID ?? ""])) {
+      const text = sessionContext.get(key);
+      if (text) output.system.push(text);
+    }
   },
   "session.deleted": async (event: OpenCodeEvent) => {
     handlePassive(event);
@@ -96,8 +114,20 @@ export default (ctx: unknown) => ({
   "tool.execute.before": async (event: OpenCodeEvent) => {
     handleBlocking(event);
   },
-  "tool.execute.after": async (event: OpenCodeEvent) => {
-    handlePassive(event);
+  "tool.execute.after": async (
+    event: OpenCodeEvent,
+    output?: { output?: string },
+  ) => {
+    const decision = dispatch({ ...event, type: "tool.execute.after" });
+    // Model-context channel: text appended to the tool result the model reads.
+    if (
+      decision.action !== "block" &&
+      decision.context &&
+      output &&
+      typeof output.output === "string"
+    ) {
+      output.output += "\n" + decision.context;
+    }
   },
 
   // File lifecycle

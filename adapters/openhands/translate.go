@@ -109,12 +109,40 @@ func ToEnvelope(ohEvent map[string]any) (*envelope.Envelope, error) {
 type openhandsDecision struct {
 	Action string `json:"action"`
 	Reason string `json:"reason,omitempty"`
+	// AdditionalContext is read from the top level of the hook's stdout
+	// JSON (hooks/executor.py); not nested in hookSpecificOutput.
+	AdditionalContext string `json:"additionalContext,omitempty"`
+}
+
+// contextEvents are the OpenHands hook events whose additionalContext is
+// delivered to the model: SessionStart (emitted as a message once the
+// system prompt is logged) and UserPromptSubmit (appended to the
+// message's extended content). PostToolUse/PreToolUse results are not
+// consumed; Stop context is only used as feedback when stop is denied.
+//
+// Source: OpenHands/software-agent-sdk openhands-sdk/openhands/sdk/hooks
+// conversation_hooks.py (_handle_user_prompt_submit,
+// inject_pending_additional_context).
+var contextEvents = map[string]bool{
+	"SessionStart":     true,
+	"UserPromptSubmit": true,
 }
 
 // FromDecision converts a nerv merger Decision into an OpenHands-native
 // decision map and exit code. Exit codes match Claude Code: 0=allow,
-// 2=block.
+// 2=block. It has no event name, so Context is dropped; use
+// FromEventDecision to deliver it.
 func FromDecision(d merger.Decision) (map[string]any, int, error) {
+	return FromEventDecision(d, "")
+}
+
+// FromEventDecision is FromDecision for a known OpenHands event name. A
+// non-empty Context on a non-block decision is emitted as
+// additionalContext when the event is in contextEvents, and dropped
+// otherwise.
+func FromEventDecision(
+	d merger.Decision, ohEvent string,
+) (map[string]any, int, error) {
 	ohAction, ok := nervActionToOpenhands[d.Action]
 	if !ok {
 		return nil, 0, fmt.Errorf(
@@ -133,6 +161,10 @@ func FromDecision(d merger.Decision) (map[string]any, int, error) {
 
 	if d.Message != "" {
 		out.Reason = d.Message
+	}
+
+	if d.Context != "" && d.Action != merger.Block && contextEvents[ohEvent] {
+		out.AdditionalContext = d.Context
 	}
 
 	raw, err := json.Marshal(out)
