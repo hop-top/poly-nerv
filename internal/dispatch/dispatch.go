@@ -81,7 +81,8 @@ type Result struct {
 //  2. Disable filtering (per-hook flag + sidecar events + sidecar bindings)
 //  3. Run handlers (exec for user hooks; in-process for built-ins)
 //  4. Merge decisions
-//  5. Log to event log
+//  5. Log to event log (best-effort; a write failure is logged and the
+//     merged decision is still returned)
 func (d *Dispatcher) Dispatch(env *envelope.Envelope) (*Result, error) {
 	totalStart := time.Now()
 
@@ -126,8 +127,10 @@ func (d *Dispatcher) Dispatch(env *envelope.Envelope) (*Result, error) {
 	// Phase 4: log
 	logStart := time.Now()
 	if d.logger != nil {
+		// Best-effort (spec/failure-modes.md: event log write failure
+		// is fail-open): the merged decision survives a log failure.
 		if err := d.logger.Write(env, merged); err != nil {
-			return nil, err
+			log.Printf("dispatch: event log write failed (fail-open): %v", err)
 		}
 	}
 	logElapsed := time.Since(logStart)
