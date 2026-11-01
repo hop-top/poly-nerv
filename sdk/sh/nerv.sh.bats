@@ -64,3 +64,44 @@ setup() {
   "
   [ "$output" = "Bash" ]
 }
+
+@test "nerv_context adds context to allow" {
+  run bash -c "source '$SCRIPT_DIR/nerv.sh' && nerv_context 'src/auth.go: 3 callers' && nerv_allow"
+  [ "$status" -eq 0 ]
+  [ "$output" = '{"action":"allow","context":"src/auth.go: 3 callers"}' ]
+}
+
+@test "nerv_context joins repeated calls with newlines" {
+  run bash -c "source '$SCRIPT_DIR/nerv.sh' && nerv_context 'one' && nerv_context 'two' && nerv_allow"
+  [ "$status" -eq 0 ]
+  echo "$output" | jq -e '.context == "one\ntwo"'
+}
+
+@test "nerv_context escapes quotes and newlines as JSON" {
+  run bash -c "source '$SCRIPT_DIR/nerv.sh' && nerv_context \"say \\\"hi\\\"
+line2\" && nerv_allow"
+  [ "$status" -eq 0 ]
+  echo "$output" | jq -e '.context == "say \"hi\"\nline2"'
+}
+
+@test "nerv_context ignores empty text" {
+  run bash -c "source '$SCRIPT_DIR/nerv.sh' && nerv_context '' && nerv_allow"
+  [ "$output" = '{"action":"allow"}' ]
+}
+
+@test "nerv_context rides along with warn, block and rewrite" {
+  run bash -c "source '$SCRIPT_DIR/nerv.sh' && nerv_context 'ctx' && nerv_warn 'careful'"
+  [ "$status" -eq 1 ]
+  [ "$output" = '{"action":"warn","message":"careful","context":"ctx"}' ]
+  run bash -c "source '$SCRIPT_DIR/nerv.sh' && nerv_context 'ctx' && nerv_block"
+  [ "$status" -eq 2 ]
+  [ "$output" = '{"action":"block","context":"ctx"}' ]
+  run bash -c "source '$SCRIPT_DIR/nerv.sh' && nerv_context 'ctx' && nerv_rewrite '{\"a\":1}'"
+  [ "$status" -eq 3 ]
+  echo "$output" | jq -e '.action == "rewrite" and .rewrite.a == 1 and .context == "ctx"'
+}
+
+@test "decisions without nerv_context omit the context field" {
+  run bash -c "unset NERV_CONTEXT; source '$SCRIPT_DIR/nerv.sh' && nerv_warn 'x'"
+  [ "$output" = '{"action":"warn","message":"x"}' ]
+}

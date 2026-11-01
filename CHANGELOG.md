@@ -51,6 +51,9 @@ in the first tagged release.
 - OpenCode adapter: `FromEventDecision` + bridge plugin deliver context
   via `tool.execute.after` output and
   `experimental.chat.system.transform` (session start).
+- Shell SDK: `nerv_context <text>` queues model-facing context; the next
+  `nerv_allow` / `nerv_warn` / `nerv_block` / `nerv_rewrite` carries it as
+  `context` (repeated calls join with newlines; empty text ignored).
 - **`nervd --adapter <cli>`** (codex, gemini, opencode, openhands): explicit adapter routing in stateless mode. Input decodes and
   the decision encodes through that CLI's translator with the real
   native event name, so `context` reaches the model. Unknown adapter
