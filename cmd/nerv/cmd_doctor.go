@@ -183,32 +183,47 @@ func checkHookHandler(h config.HookEntry) Check {
 	parts := strings.Fields(h.Run)
 	bin := parts[0]
 
-	// Resolve relative to PATH or absolute.
-	resolved, err := exec.LookPath(bin)
-	if err != nil {
-		return Check{
-			Name:    name,
-			Status:  StatusWarn,
-			Message: fmt.Sprintf("handler binary %q not found", bin),
-			Detail:  h.Run,
+	// Path-like handlers (any separator: relative or absolute) are
+	// stat'd directly so an existing-but-not-executable file is
+	// diagnosed as such; exec.LookPath would report it as missing.
+	// Bare names are resolved on PATH.
+	resolved := bin
+	if strings.ContainsRune(bin, filepath.Separator) {
+		info, err := os.Stat(bin)
+		if err != nil {
+			if os.IsNotExist(err) {
+				return Check{
+					Name:    name,
+					Status:  StatusWarn,
+					Message: fmt.Sprintf("handler binary %q not found", bin),
+					Detail:  h.Run,
+				}
+			}
+			return Check{
+				Name:    name,
+				Status:  StatusWarn,
+				Message: fmt.Sprintf("cannot stat %s", bin),
+				Detail:  err.Error(),
+			}
 		}
-	}
-
-	info, err := os.Stat(resolved)
-	if err != nil {
-		return Check{
-			Name:    name,
-			Status:  StatusWarn,
-			Message: fmt.Sprintf("cannot stat %s", resolved),
-			Detail:  err.Error(),
+		if info.IsDir() || info.Mode()&0o111 == 0 {
+			return Check{
+				Name:    name,
+				Status:  StatusFail,
+				Message: fmt.Sprintf("%s is not executable", bin),
+				Detail:  h.Run,
+			}
 		}
-	}
-
-	if info.Mode()&0o111 == 0 {
-		return Check{
-			Name:    name,
-			Status:  StatusFail,
-			Message: fmt.Sprintf("%s is not executable", resolved),
+	} else {
+		var err error
+		resolved, err = exec.LookPath(bin)
+		if err != nil {
+			return Check{
+				Name:    name,
+				Status:  StatusWarn,
+				Message: fmt.Sprintf("handler binary %q not found", bin),
+				Detail:  h.Run,
+			}
 		}
 	}
 

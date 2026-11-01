@@ -66,16 +66,31 @@ func TestCheckHookHandler(t *testing.T) {
 		{"empty run", "", StatusFail},
 		{"missing binary", "nope --flag", StatusWarn},
 		{"abs executable", good + " arg", StatusOK},
-		// LookPath rejects non-executable files, so the handler is
-		// reported missing (WARN); the "not executable" FAIL branch in
-		// checkHookHandler is unreachable behind it.
-		{"abs non-executable", noexec, StatusWarn},
+		{"abs non-executable", noexec, StatusFail},
+		{"abs missing", filepath.Join(dir, "gone"), StatusWarn},
+		{"rel non-executable", "./noexec", StatusFail},
+		{"rel executable", "./good", StatusOK},
+		// Bare name that is on PATH but not executable: not resolvable.
+		{"bare non-executable", "noexec", StatusWarn},
 	}
+	t.Chdir(dir)
 	for _, tc := range cases {
 		c := checkHookHandler(config.HookEntry{Name: "h", Run: tc.run})
 		if c.Status != tc.want || c.Name != "hook/h" {
 			t.Errorf("%s: got %+v want status %s", tc.name, c, tc.want)
 		}
+	}
+}
+
+func TestCheckHookHandler_NotExecutableMessage(t *testing.T) {
+	dir := t.TempDir()
+	noexec := filepath.Join(dir, "noexec")
+	if err := os.WriteFile(noexec, []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	c := checkHookHandler(config.HookEntry{Name: "h", Run: noexec + " a"})
+	if c.Status != StatusFail || !strings.Contains(c.Message, "not executable") {
+		t.Errorf("got %+v", c)
 	}
 }
 
