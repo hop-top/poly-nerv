@@ -7,15 +7,22 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        cli: [claude, gemini, codex, opencode]
+        # One entry per registered adapter (adapters/registry.go);
+        # guarded by TestReplayWorkflowMatrixCoversRegistry. No
+        # per-adapter cassettes exist; every adapter is replayed by
+        # the table-driven conformance suite, so all are listed.
+        cli: [claude, codex, gemini, goose, opencode, openhands]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with: { go-version-file: go.mod }
       - name: Build + Replay
+        env:
+          # Unknown or empty value fails the run (see allAdapters).
+          NERV_CONFORMANCE_CLI: ${{ matrix.cli }}
         run: |
           go build -buildvcs=false ./...
-          go test -v -run TestConformance -tags conformance ./adapters/...
+          go test -v -count=1 -run TestConformance -tags conformance ./adapters/...
       - name: Check cassette diff
         run: |
           if ! git diff --quiet testdata/cassettes/; then
