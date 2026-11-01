@@ -25,12 +25,12 @@ func TestMain(m *testing.M) {
 		abs, err := filepath.Abs(dir)
 		if err == nil {
 			_ = os.MkdirAll(abs, 0o755)
-			os.Setenv("GOCOVERDIR", abs)
+			_ = os.Setenv("GOCOVERDIR", abs)
 		}
 	} else {
 		// An inherited GOCOVERDIR would make a plain binary noisy
 		// nowhere, but keep the child env deterministic.
-		os.Unsetenv("GOCOVERDIR")
+		_ = os.Unsetenv("GOCOVERDIR")
 	}
 	code := m.Run()
 	if nervBinDir != "" {
