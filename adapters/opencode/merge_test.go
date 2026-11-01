@@ -8,7 +8,7 @@ import (
 // MergeConfig output is written to ConfigPaths()[0] (opencode.json) by
 // the installer, so it must be that file merged, not the TS plugin.
 func TestAdapter_MergeConfig_MergesOpencodeJSON(t *testing.T) {
-	a := &Adapter{NervdPath: "/usr/local/bin/nervd"}
+	a := &Adapter{NervdPath: "/usr/local/bin/nervd", Version: "1.19.3"}
 	existing := []byte(`{"model":"claude-4","nerv":{"note":"kept"}}`)
 
 	merged, err := a.MergeConfig(existing)
@@ -33,7 +33,7 @@ func TestAdapter_MergeConfig_MergesOpencodeJSON(t *testing.T) {
 }
 
 func TestAdapter_MergeConfig_Idempotent(t *testing.T) {
-	a := &Adapter{NervdPath: "/usr/local/bin/nervd"}
+	a := &Adapter{NervdPath: "/usr/local/bin/nervd", Version: "1.19.3"}
 	first, err := a.MergeConfig(nil)
 	if err != nil {
 		t.Fatalf("first merge: %v", err)
@@ -50,7 +50,7 @@ func TestAdapter_MergeConfig_Idempotent(t *testing.T) {
 // The marker claims the bridge is installable; without a nervd path no
 // plugin can be generated, so the merge must refuse.
 func TestAdapter_MergeConfig_RequiresNervdPath(t *testing.T) {
-	if _, err := (&Adapter{}).MergeConfig(nil); err == nil {
+	if _, err := (&Adapter{Version: "1.19.3"}).MergeConfig(nil); err == nil {
 		t.Error("MergeConfig with empty NervdPath: want error, got nil")
 	}
 }
