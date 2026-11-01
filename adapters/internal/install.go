@@ -22,6 +22,21 @@ type InstallRecord struct {
 	PreHash    string    `json:"pre_hash"`
 	PostHash   string    `json:"post_hash"`
 	BackupPath string    `json:"backup_path"`
+	// Files lists every file a multi-file install touched. For those
+	// installs the top-level hashes and backup describe Files[0].
+	Files []FileRecord `json:"files,omitempty"`
+}
+
+// FileRecord tracks one file of a multi-file install.
+type FileRecord struct {
+	Path string `json:"path"`
+	// Existed reports whether the file was present before the install.
+	Existed bool `json:"existed"`
+	// Removed reports whether the install deleted the file.
+	Removed    bool   `json:"removed,omitempty"`
+	PreHash    string `json:"pre_hash"`
+	PostHash   string `json:"post_hash"`
+	BackupPath string `json:"backup_path,omitempty"`
 }
 
 // Installer handles transactional adapter install/uninstall.
@@ -71,6 +86,10 @@ func (inst *Installer) Install(adapter HookAdapter, dryRun bool) error {
 	}
 	if !dr.Found {
 		return fmt.Errorf("cli %q not found", adapter.CLI())
+	}
+
+	if mf, ok := adapter.(MultiFileAdapter); ok {
+		return inst.installMulti(mf, dr, dryRun)
 	}
 
 	paths := adapter.ConfigPaths()
@@ -158,6 +177,9 @@ func (inst *Installer) Uninstall(adapter HookAdapter) error {
 
 	// Use most recent backup.
 	last := records[len(records)-1]
+	if len(last.Files) > 0 {
+		return restoreFiles(last.Files)
+	}
 	backup, err := os.ReadFile(last.BackupPath)
 	if err != nil {
 		return fmt.Errorf("read backup %s: %w", last.BackupPath, err)
@@ -182,6 +204,9 @@ func (inst *Installer) DetectDrift(adapter HookAdapter) (bool, error) {
 	}
 
 	last := records[len(records)-1]
+	if len(last.Files) > 0 {
+		return filesDrifted(last.Files)
+	}
 	paths := adapter.ConfigPaths()
 	if len(paths) == 0 {
 		return false, errors.New("adapter returned no config paths")
