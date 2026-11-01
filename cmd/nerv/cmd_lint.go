@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -44,7 +45,22 @@ func lintCmd() *cobra.Command {
 	}
 }
 
-func runLint(_ *cobra.Command, args []string) error {
+// errLintFailed reports that lint found at least one error-severity
+// issue. The issues themselves were already rendered on stdout, so the
+// error carries no extra diagnostics of its own.
+var errLintFailed = lintFailedError{}
+
+type lintFailedError struct{}
+
+func (lintFailedError) Error() string { return "lint found errors" }
+
+// AsCLIError maps the failure to the GENERIC exit class (1), the code
+// lint has always exited with on error-severity findings.
+func (lintFailedError) AsCLIError() *output.Error {
+	return output.GenericError("lint found errors")
+}
+
+func runLint(cmd *cobra.Command, args []string) error {
 	paths := config.LayerPaths()
 	if len(args) == 1 {
 		paths = []string{args[0]}
@@ -73,10 +89,13 @@ func runLint(_ *cobra.Command, args []string) error {
 		return err
 	}
 
-	// Exit 1 if any errors found.
+	// Fail (exit 1 via the CLI's exit-code mapping) if any errors found.
 	for _, iss := range issues {
 		if iss.Severity == "error" {
-			os.Exit(1)
+			// The issue list on stdout is the whole report; keep the
+			// error middleware from adding an envelope on stderr.
+			cmd.SetErr(io.Discard)
+			return errLintFailed
 		}
 	}
 	return nil
@@ -292,18 +311,31 @@ func lintHandler(file string, line int, h config.HookEntry) []lintIssue {
 	return issues
 }
 
-// findHookLine approximates the YAML line number for the i-th hook.
+// findHookLine returns the 1-based line of the hookIdx-th entry of the
+// top-level "hooks" sequence, or 0 when absent. Located by YAML
+// structure (node positions), independent of which key an entry
+// starts with or how it is styled.
 func findHookLine(data []byte, hookIdx int) int {
-	lines := strings.Split(string(data), "\n")
-	hookCount := 0
-	for i, line := range lines {
-		trimmed := strings.TrimSpace(line)
-		if strings.HasPrefix(trimmed, "- name:") {
-			if hookCount == hookIdx {
-				return i + 1 // 1-based
-			}
-			hookCount++
+	var doc yaml.Node
+	if err := yaml.Unmarshal(data, &doc); err != nil {
+		return 0
+	}
+	root := &doc
+	if root.Kind == yaml.DocumentNode && len(root.Content) == 1 {
+		root = root.Content[0]
+	}
+	if root.Kind != yaml.MappingNode {
+		return 0
+	}
+	for i := 0; i+1 < len(root.Content); i += 2 {
+		if root.Content[i].Value != "hooks" {
+			continue
 		}
+		seq := root.Content[i+1]
+		if seq.Kind != yaml.SequenceNode || hookIdx < 0 || hookIdx >= len(seq.Content) {
+			return 0
+		}
+		return seq.Content[hookIdx].Line
 	}
 	return 0
 }
