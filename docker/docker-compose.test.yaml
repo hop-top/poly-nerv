@@ -38,9 +38,9 @@ services:
       dockerfile: docker/Dockerfile.test
       args:
         CLI_NAME: goose
-        CLI_VERSION: "${GOOSE_VERSION:-latest}"
-        CLI_PACKAGE: "goose-cli"
-        CLI_INSTALL_METHOD: cargo
+        CLI_VERSION: "${GOOSE_VERSION:-1.55.0}"
+        CLI_PACKAGE: "aaif-goose/goose"
+        CLI_INSTALL_METHOD: github-release
   openhands:
     build:
       context: ..

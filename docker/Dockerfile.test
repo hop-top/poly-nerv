@@ -42,17 +42,26 @@ RUN if [ "$CLI_INSTALL_METHOD" = "pip" ]; then \
       fi; \
     fi
 
-# Cargo for goose
-RUN if [ "$CLI_INSTALL_METHOD" = "cargo" ]; then \
-      curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y && \
-      . "$HOME/.cargo/env" && \
-      if [ "$CLI_VERSION" = "latest" ]; then \
-        cargo install ${CLI_PACKAGE}; \
-      else \
-        cargo install ${CLI_PACKAGE} --version ${CLI_VERSION}; \
-      fi; \
+# GitHub release binary (goose). CLI_PACKAGE = owner/repo. Pinned
+# version + per-arch sha256 (from the release asset digests); bump
+# both together.
+ARG GOOSE_SHA256_X86_64=fd3932908328fac850ca7ad2a8289c744e0c2ddaf4c5a2338709fb17a00b3a4c
+ARG GOOSE_SHA256_AARCH64=ea83f59bb165a3d999dd00edf69a58028747f31e404b96f0153452c6b1651188
+RUN if [ "$CLI_INSTALL_METHOD" = "github-release" ]; then \
+      set -eu; \
+      [ "$CLI_NAME" = "goose" ] || { echo "ERROR: github-release supports goose only" >&2; exit 1; }; \
+      case "$(uname -m)" in \
+        x86_64)  arch=x86_64;  sum="$GOOSE_SHA256_X86_64" ;; \
+        aarch64) arch=aarch64; sum="$GOOSE_SHA256_AARCH64" ;; \
+        *) echo "ERROR: unsupported arch $(uname -m)" >&2; exit 1 ;; \
+      esac; \
+      url="https://github.com/${CLI_PACKAGE}/releases/download/v${CLI_VERSION}/goose-${arch}-unknown-linux-gnu.tar.gz"; \
+      curl -fsSL --proto '=https' --tlsv1.2 -o /tmp/goose.tgz "$url"; \
+      echo "${sum}  /tmp/goose.tgz" | sha256sum -c -; \
+      tar -xzf /tmp/goose.tgz -C /usr/local/bin ./goose; \
+      rm /tmp/goose.tgz; \
+      goose --version; \
     fi
-ENV PATH="/root/.cargo/bin:${PATH}"
 
 # Codex feature flag
 RUN if [ "$CLI_NAME" = "codex" ]; then \
