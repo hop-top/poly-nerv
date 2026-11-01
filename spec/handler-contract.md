@@ -142,15 +142,16 @@ depends on.
 | opencode | bridge plugin appends to the tool result (`tool.execute.after` `output.output`) or pushes onto the system prompt (`experimental.chat.system.transform`) | native `tool.execute.after` (PostToolUse), `session.created` (SessionStart, delivered via the plugin `event` hook); OpenCode plugin API v1, `>=1.19.3 <2.0.0` |
 | openhands | top-level `additionalContext` | SessionStart, UserPromptSubmit |
 | vibe | `hook_specific_output.additional_context` | `post_tool` (ToolResultEvent) |
-| goose, aider | none — dropped | — |
+| goose | none — dropped | — |
+| aider | none — dropped. `lint-cmd`/`test-cmd` output reaches the model only on non-zero exit as an error-repair prompt (`aider/commands.py` `cmd_test`, `aider/linter.py` `run_cmd`); context would read as a failure | — |
 
-Adapter selection: `nervd --adapter <cli>` (codex, gemini, opencode,
+Adapter selection: `nervd --adapter <cli>` (aider, codex, gemini, opencode,
 openhands, vibe; `claude` is the default) makes stateless nervd read that
 CLI's native hook JSON and answer in its dialect, using the native event
 name to pick the context channel. `nerv install` writes the flag into
 the hook command. Without `--adapter`, input carrying `hook_event_name`
 is answered as Claude Code, so hooks installed before the flag keep
-working. An unknown adapter exits 2 with `nervd: unknown adapter ...` on
+working. `--adapter aider` takes argv (`lint <file>...` / `test`) instead of stdin and never reads it: Aider runs lint-cmd/test-cmd with the user's terminal stdin. `block` exits 1 with the message on stdout; allow, warn, rewrite exit 0 with empty stdout. An unknown adapter exits 2 with `nervd: unknown adapter ...` on
 stderr. The opencode bridge consumes `{"action","message","rewrite",
 "context"}` (lowercase keys, `context` omitted when empty).
 

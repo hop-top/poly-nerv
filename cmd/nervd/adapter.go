@@ -5,9 +5,11 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"os"
 	"sort"
 	"strings"
 
+	"hop.top/nerv/adapters/aider"
 	"hop.top/nerv/adapters/claude"
 	"hop.top/nerv/adapters/codex"
 	"hop.top/nerv/adapters/gemini"
@@ -24,7 +26,7 @@ import (
 // hook_event_name input is read as Claude Code, anything else as a
 // nerv envelope.
 var adapterFlag = flag.String("adapter", "",
-	"host CLI dialect for stateless stdin/stdout (codex, gemini, opencode, openhands, vibe)")
+	"host CLI dialect for stateless stdin/stdout (aider, codex, gemini, opencode, openhands, vibe)")
 
 // adapterRoute translates one host CLI's native hook I/O.
 type adapterRoute struct {
@@ -33,16 +35,21 @@ type adapterRoute struct {
 	decode func(raw []byte) (*envelope.Envelope, string, error)
 	// encode renders a decision as the host's stdout bytes and exit code.
 	encode func(d merger.Decision, event string) ([]byte, int, error)
+	// fromArgs, when set, replaces stdin: the host passes argv and no
+	// JSON, and may share its terminal's stdin, which must stay unread.
+	// It receives the positional args after the flags.
+	fromArgs func(args []string) ([]byte, error)
 }
 
 // adapterRoutes is the stateless-mode translator table. Keys match the
 // canonical CLI names in adapters.Registry.
 var adapterRoutes = map[string]adapterRoute{
-	"codex":     {decodeCodex, encodeCodex},
-	"gemini":    {decodeGemini, encodeGemini},
-	"openhands": {decodeOpenHands, encodeOpenHands},
-	"vibe":      {decodeVibe, encodeVibe},
-	"opencode":  {decodeOpenCode, encodeOpenCode},
+	"aider":     {decodeAider, encodeAider, aiderArgs},
+	"codex":     {decodeCodex, encodeCodex, nil},
+	"gemini":    {decodeGemini, encodeGemini, nil},
+	"openhands": {decodeOpenHands, encodeOpenHands, nil},
+	"vibe":      {decodeVibe, encodeVibe, nil},
+	"opencode":  {decodeOpenCode, encodeOpenCode, nil},
 }
 
 // supportedAdapters lists the valid --adapter values, sorted.
@@ -85,6 +92,27 @@ func strField(m map[string]any, keys ...string) string {
 		}
 	}
 	return ""
+}
+
+// aiderArgs turns `nervd --adapter aider lint <file>...` / `test` argv
+// into the synthesized event JSON. Aider runs lint-cmd/test-cmd with
+// the process cwd as the repo root.
+func aiderArgs(args []string) ([]byte, error) {
+	cwd, _ := os.Getwd()
+	return aider.BridgeEvent(args, cwd)
+}
+
+func decodeAider(raw []byte) (*envelope.Envelope, string, error) {
+	m, err := probeMap(raw)
+	if err != nil {
+		return nil, "", err
+	}
+	env, err := aider.ToEnvelope(m)
+	return env, strField(m, "hook_event_name"), err
+}
+
+func encodeAider(d merger.Decision, ev string) ([]byte, int, error) {
+	return aider.FromEventDecision(d, ev)
 }
 
 func decodeCodex(raw []byte) (*envelope.Envelope, string, error) {
