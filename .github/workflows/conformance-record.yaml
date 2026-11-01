@@ -4,41 +4,61 @@ on:
     - cron: '0 6 * * 1'  # Weekly Monday 6am UTC
   workflow_dispatch:
 
+# Default-deny; each job grants only what it needs.
+permissions: {}
+
 jobs:
-  record:
+  # Matrix is generated from versions.yaml: one job per entry, latest
+  # pinned version. Guarded by adapters/record_matrix_test.go.
+  plan:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      matrix: ${{ steps.matrix.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - id: matrix
+        run: |
+          m=$(yq -o=json -I=0 '{"include": [.matrix | to_entries | .[] | {"key": .key, "adapter": (.value.adapter // .key)}]}' versions.yaml)
+          echo "matrix=$m" >> "$GITHUB_OUTPUT"
+          echo "$m"
+
+  record:
+    needs: plan
+    runs-on: ubuntu-latest
+    # contents: write for the cassette commit step only.
+    permissions:
+      contents: write
     strategy:
       fail-fast: false
-      matrix:
-        cli: [claude, gemini, codex, opencode]
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with: { go-version-file: go.mod }
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with: { node-version: '24.22.1' }
-      - name: Install yq
-        run: |
-          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
-          sudo chmod +x /usr/local/bin/yq
+      # openhands needs Python 3.12 (pip method).
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with: { python-version: '3.12' }
       - name: Install CLI
+        env:
+          INSTALL_DIR: ${{ runner.temp }}/bin
         run: |
-          CLI_PKG=$(yq ".matrix.${{ matrix.cli }}.package" versions.yaml)
-          CLI_VER=$(yq ".matrix.${{ matrix.cli }}.versions[-1]" versions.yaml)
-          INSTALL=$(yq ".matrix.${{ matrix.cli }}.install" versions.yaml)
-          if [ "$INSTALL" = "npm" ]; then
-            npm i -g "${CLI_PKG}@${CLI_VER}"
-          else
-            go install "${CLI_PKG}@v${CLI_VER}"
-          fi
+          scripts/install-cli.sh "${{ matrix.key }}"
+          echo "$INSTALL_DIR" >> "$GITHUB_PATH"
       - name: Build nerv
         run: go build -buildvcs=false ./...
       - name: Record cassettes
         env:
           NERV_RECORD: "1"
-        run: go test -v -run TestConformance -tags conformance ./adapters/...
+          # One adapter per job; opencode-v2 records as opencode, the
+          # bridge is picked from `opencode --version`.
+          NERV_CONFORMANCE_CLI: ${{ matrix.adapter }}
+        run: go test -v -count=1 -run TestConformance -tags conformance ./adapters/...
       - name: Commit cassettes
         uses: stefanzweifel/git-auto-commit-action@4a55954c782fc1ea30b9056cd3e7a2b40ca8887d # v7.2.0
         with:
-          commit_message: "test(cassettes): record ${{ matrix.cli }} conformance"
+          commit_message: "test(cassettes): record ${{ matrix.key }} conformance"
           file_pattern: testdata/cassettes/**

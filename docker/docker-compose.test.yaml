@@ -6,7 +6,6 @@ services:
       args:
         CLI_NAME: claude
         CLI_VERSION: "${CLAUDE_VERSION:-latest}"
-        CLI_PACKAGE: "@anthropic-ai/claude-code"
   gemini:
     build:
       context: ..
@@ -14,7 +13,6 @@ services:
       args:
         CLI_NAME: gemini
         CLI_VERSION: "${GEMINI_VERSION:-latest}"
-        CLI_PACKAGE: "@google/gemini-cli"
   codex:
     build:
       context: ..
@@ -22,7 +20,6 @@ services:
       args:
         CLI_NAME: codex
         CLI_VERSION: "${CODEX_VERSION:-latest}"
-        CLI_PACKAGE: "@openai/codex"
   opencode:
     build:
       context: ..
@@ -30,17 +27,14 @@ services:
       args:
         CLI_NAME: opencode
         CLI_VERSION: "${OPENCODE_VERSION:-1.19.3}"
-        CLI_PACKAGE: "opencode-ai"
-        CLI_INSTALL_METHOD: npm
   opencode-v2:
     build:
       context: ..
       dockerfile: docker/Dockerfile.test
       args:
         CLI_NAME: opencode
+        CLI_KEY: opencode-v2
         CLI_VERSION: "${OPENCODE_V2_VERSION:-2.2.5}"
-        CLI_PACKAGE: "anomalyco/opencode"
-        CLI_INSTALL_METHOD: github-release
   goose:
     build:
       context: ..
@@ -48,14 +42,10 @@ services:
       args:
         CLI_NAME: goose
         CLI_VERSION: "${GOOSE_VERSION:-1.55.0}"
-        CLI_PACKAGE: "aaif-goose/goose"
-        CLI_INSTALL_METHOD: github-release
   openhands:
     build:
       context: ..
       dockerfile: docker/Dockerfile.test
       args:
         CLI_NAME: openhands
-        CLI_VERSION: "${OPENHANDS_VERSION:-latest}"
-        CLI_PACKAGE: "openhands"
-        CLI_INSTALL_METHOD: pip
+        CLI_VERSION: "${OPENHANDS_VERSION:-1.16.0}"

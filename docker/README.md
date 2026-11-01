@@ -15,10 +15,13 @@ multiple CLI tools and versions.
 
 | Arg | Required | Default | Description |
 |-----|----------|---------|-------------|
-| `CLI_NAME` | yes | - | Binary name (`claude`, `gemini`, `codex`, `opencode`) |
-| `CLI_VERSION` | yes | - | Semver string or `latest` |
-| `CLI_PACKAGE` | yes | - | npm package or Go module path |
-| `CLI_INSTALL_METHOD` | no | `npm` | `npm`, `go`, `pip` or `github-release` (goose, opencode 2.x) |
+| `CLI_NAME` | yes | - | Binary name (`claude`, `gemini`, `codex`, `opencode`, `goose`, `openhands`) |
+| `CLI_KEY` | no | `CLI_NAME` | `versions.yaml` matrix key; set for `opencode-v2` |
+| `CLI_VERSION` | no | last in `versions.yaml` | Semver string or `latest` (`github-release` needs a pinned version) |
+
+Package, install method and `github-release` sha256 pins come from
+`../versions.yaml` via `../scripts/install-cli.sh` (shared with the
+record workflow).
 
 ## Usage
 
@@ -28,7 +31,6 @@ multiple CLI tools and versions.
 docker build -f docker/Dockerfile.test \
   --build-arg CLI_NAME=claude \
   --build-arg CLI_VERSION=1.2.1 \
-  --build-arg CLI_PACKAGE=@anthropic-ai/claude-code \
   -t nerv-test-claude .
 docker run nerv-test-claude
 ```
