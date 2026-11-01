@@ -60,3 +60,20 @@ type HookAdapter interface {
 	// Translate converts a nerv envelope to CLI-native format.
 	Translate(envelope []byte) ([]byte, error)
 }
+
+// FileReader reports the current content of path. exists is false when
+// the file is absent.
+type FileReader func(path string) (data []byte, exists bool)
+
+// MultiFileAdapter is implemented by adapters whose install spans more
+// than one file (e.g. a config plus a plugin source). The installer
+// uses MergeFiles instead of MergeConfig for these adapters.
+type MultiFileAdapter interface {
+	HookAdapter
+
+	// MergeFiles returns the complete desired content of every file the
+	// install manages, keyed by path. A nil value removes the file (for
+	// example a bridge from a superseded layout). Paths in ConfigPaths()
+	// come first in write order; other paths follow sorted.
+	MergeFiles(read FileReader) (map[string][]byte, error)
+}
