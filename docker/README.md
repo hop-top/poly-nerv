@@ -18,7 +18,7 @@ multiple CLI tools and versions.
 | `CLI_NAME` | yes | - | Binary name (`claude`, `gemini`, `codex`, `opencode`) |
 | `CLI_VERSION` | yes | - | Semver string or `latest` |
 | `CLI_PACKAGE` | yes | - | npm package or Go module path |
-| `CLI_INSTALL_METHOD` | no | `npm` | `npm` or `go` |
+| `CLI_INSTALL_METHOD` | no | `npm` | `npm`, `go`, `pip` or `github-release` (goose, opencode 2.x) |
 
 ## Usage
 

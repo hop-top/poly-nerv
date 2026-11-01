@@ -42,25 +42,32 @@ RUN if [ "$CLI_INSTALL_METHOD" = "pip" ]; then \
       fi; \
     fi
 
-# GitHub release binary (goose). CLI_PACKAGE = owner/repo. Pinned
-# version + per-arch sha256 (from the release asset digests); bump
+# GitHub release binary (goose, opencode 2.x). CLI_PACKAGE = owner/repo.
+# Pinned version + per-arch sha256 (from the release asset digests); bump
 # both together.
 ARG GOOSE_SHA256_X86_64=fd3932908328fac850ca7ad2a8289c744e0c2ddaf4c5a2338709fb17a00b3a4c
 ARG GOOSE_SHA256_AARCH64=ea83f59bb165a3d999dd00edf69a58028747f31e404b96f0153452c6b1651188
+# opencode 2.2.5 (anomalyco/opencode SHA256SUMS)
+ARG OPENCODE_SHA256_X86_64=09f44302c10fd036912f59c81fd1aef5df45dd06f649197f9dfc9bbe2a79614e
+ARG OPENCODE_SHA256_AARCH64=5a528f42caf576c6cdece6a191eb273d3db54effa5518e0402684d8f8026aeb6
 RUN if [ "$CLI_INSTALL_METHOD" = "github-release" ]; then \
       set -eu; \
-      [ "$CLI_NAME" = "goose" ] || { echo "ERROR: github-release supports goose only" >&2; exit 1; }; \
+      case "$CLI_NAME" in goose|opencode) ;; *) echo "ERROR: github-release supports goose and opencode only" >&2; exit 1 ;; esac; \
       case "$(uname -m)" in \
-        x86_64)  arch=x86_64;  sum="$GOOSE_SHA256_X86_64" ;; \
-        aarch64) arch=aarch64; sum="$GOOSE_SHA256_AARCH64" ;; \
+        x86_64)  arch=x86_64;  oc_arch=x64;   gsum="$GOOSE_SHA256_X86_64";  osum="$OPENCODE_SHA256_X86_64" ;; \
+        aarch64) arch=aarch64; oc_arch=arm64; gsum="$GOOSE_SHA256_AARCH64"; osum="$OPENCODE_SHA256_AARCH64" ;; \
         *) echo "ERROR: unsupported arch $(uname -m)" >&2; exit 1 ;; \
       esac; \
-      url="https://github.com/${CLI_PACKAGE}/releases/download/v${CLI_VERSION}/goose-${arch}-unknown-linux-gnu.tar.gz"; \
-      curl -fsSL --proto '=https' --tlsv1.2 -o /tmp/goose.tgz "$url"; \
-      echo "${sum}  /tmp/goose.tgz" | sha256sum -c -; \
-      tar -xzf /tmp/goose.tgz -C /usr/local/bin ./goose; \
-      rm /tmp/goose.tgz; \
-      goose --version; \
+      if [ "$CLI_NAME" = "goose" ]; then \
+        url="https://github.com/${CLI_PACKAGE}/releases/download/v${CLI_VERSION}/goose-${arch}-unknown-linux-gnu.tar.gz"; sum="$gsum"; member=./goose; \
+      else \
+        url="https://github.com/${CLI_PACKAGE}/releases/download/v${CLI_VERSION}/opencode-linux-${oc_arch}.tar.gz"; sum="$osum"; member=opencode; \
+      fi; \
+      curl -fsSL --proto '=https' --tlsv1.2 -o /tmp/cli.tgz "$url"; \
+      echo "${sum}  /tmp/cli.tgz" | sha256sum -c -; \
+      tar -xzf /tmp/cli.tgz -C /usr/local/bin "$member"; \
+      rm /tmp/cli.tgz; \
+      "$CLI_NAME" --version; \
     fi
 
 # Codex feature flag
