@@ -114,6 +114,13 @@ func TestInstallAdd_NothingDetected(t *testing.T) {
 
 func TestInstallAdd_DryRunPlan(t *testing.T) {
 	isolateEnv(t)
+	// Detection must not depend on a real claude on the host PATH.
+	bin := t.TempDir()
+	stub := filepath.Join(bin, "claude")
+	if err := os.WriteFile(stub, []byte("#!/bin/sh\necho 1.2.1\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", bin)
 	setFormat(t, "json")
 	out, err := runRootVerb(t, "install", "add", "claude", "--dry-run")
 	if err != nil {
