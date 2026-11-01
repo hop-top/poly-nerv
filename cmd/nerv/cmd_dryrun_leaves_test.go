@@ -28,6 +28,9 @@ func runInProjectEnv(t *testing.T, bin, project string, extraEnv []string, args 
 	var out, errOut strings.Builder
 	cmd.Stdout = &out
 	cmd.Stderr = &errOut
+	// WaitDelay bounds the wait on stdout/stderr pipes so a stray
+	// grandchild holding them open cannot hang the test forever.
+	cmd.WaitDelay = 15 * time.Second
 	err := cmd.Run()
 	code := 0
 	if ee, ok := err.(*exec.ExitError); ok {
