@@ -117,7 +117,7 @@ func TestLookupAdapter_Unknown(t *testing.T) {
 		!strings.Contains(err.Error(), "codex") {
 		t.Fatalf("err = %v", err)
 	}
-	want := "supported: claude, codex, gemini, opencode, openhands)"
+	want := "supported: claude, codex, gemini, goose, opencode, openhands)"
 	if !strings.Contains(err.Error(), want) {
 		t.Fatalf("err = %v, want %q", err, want)
 	}
