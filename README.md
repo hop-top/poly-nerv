@@ -216,7 +216,7 @@ Claude Code superset; the full taxonomy lives at
 | OpenHands   | 5      | 15          | 20/26 |
 | Codex CLI   | 3      | 12          | 15/26 |
 | Vibe        | 6      | 8           | 14/26 |
-| Aider       | 0      | 5           | 5/26  |
+| Aider       | 0      | 2           | 2/26  |
 
 Events cover the full lifecycle: session, prompt, tool use,
 permissions, subagents, tasks, context compaction, file changes,
@@ -225,6 +225,8 @@ worktrees, MCP elicitations.
 Full event registry: [`spec/events.yaml`](spec/events.yaml). Per-adapter
 coverage matrix (which events each adapter delivers natively vs.
 synthesizes vs. leaves uncovered): [`docs/capability-matrix.md`](docs/capability-matrix.md).
+Per-harness parity (versions, block/warn/rewrite/context support, known
+bugs): [`docs/parity.md`](docs/parity.md).
 
 ## Design principles
 

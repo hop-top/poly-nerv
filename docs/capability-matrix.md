@@ -1,5 +1,7 @@
 # Capability matrix — per-adapter event coverage
 
+> Per-harness support and known bugs at a glance: [parity.md](parity.md).
+
 "Universal" with receipts. nerv claims one hook definition runs on
 every AI coding CLI; this matrix is the unvarnished count. Each cell
 declares whether the named adapter delivers the named event natively,
@@ -83,44 +85,12 @@ including `close:` semantic-mismatch mappings) | `-` not covered |
 `?` not declared in `capabilities.yaml` (treat as uncovered until the
 file is amended).
 
-## Context injection
+## Context injection and delivery
 
-Whether the adapter delivers a decision's `context` field to the
-model (see [handler contract § Context](../spec/handler-contract.md#context)).
-Where there is no channel, `context` is dropped silently.
-
-Delivery needs the host's hook command to select the adapter:
-`nervd --adapter <cli>` decodes that CLI's native stdin and encodes the
-decision with its `FromEventDecision`, passing the real native event
-name. Without `--adapter`, nervd keeps the legacy behavior (input with
-`hook_event_name` is treated as Claude Code), so already-installed hooks
-are unchanged. `nerv install` writes the flag for gemini, codex, openhands, vibe and
-the opencode bridge; legacy commands are upgraded on reinstall.
-
-| Adapter   | Context injection | Channel / events |
-|-----------|:-----------------:|------------------|
-| claude    | ✓ | `hookSpecificOutput.additionalContext` on SessionStart, SubagentStart, UserPromptSubmit, PreToolUse, PostToolUse, PostToolUseFailure, Stop, SubagentStop |
-| gemini    | ✓ end to end | hook command `nervd --adapter gemini`; `hookSpecificOutput.additionalContext` on native SessionStart, BeforeAgent (SubagentStart), AfterTool (PostToolUse) via `gemini.FromEventDecision` |
-| opencode  | ✓ end to end | `nerv install opencode` bridge calls `nervd --adapter opencode`; bridge plugin: `tool.execute.after` appends to `output.output` (PostToolUse); `session.created` (delivered through the plugin `event` hook) context pushed via `experimental.chat.system.transform` (SessionStart); via `opencode.FromEventDecision`. No channel on `tool.execute.before` (args only). Supported range: OpenCode plugin API v1, `>=1.19.3 <2.0.0`; v2.x plugins use a different API and are not covered |
-| codex     | ✓ end to end | hook command `nervd --adapter codex`; `hookSpecificOutput.additionalContext` on SessionStart, UserPromptSubmit, PreToolUse, PostToolUse via `codex.FromEventDecision`; Stop / SubagentStop / compaction outputs reject unknown fields, so dropped there |
-| goose     | - | hooks are observation-only except PreToolUse/Stop block; hook stdout is read only for the decision and, on SessionStart, a user-visible `banner` stored with `agent_visible=false` (`crates/goose/src/hooks/mod.rs` `emit_collecting_banners`, `agents/state_machine/session.rs` `session_start_message`) |
-| openhands | ✓ end to end | hook command `nervd --adapter openhands`; top-level `additionalContext` on SessionStart (emitted as a message after the system prompt) and UserPromptSubmit (appended to extended content) via `openhands.FromEventDecision`; PreToolUse/PostToolUse results are not consumed |
-| vibe      | ✓ end to end | hook command `nervd --adapter vibe`; `hook_specific_output.additional_context` on `post_tool` (ToolResultEvent), appended to the tool output the LLM sees, via `vibe.FromEventDecision`; `pre_tool` / `post_agent` have no context field |
-| aider     | - | no hook protocol; hook command `nervd --adapter aider lint\|test` (argv in, exit code out). `lint-cmd` / `test-cmd` output reaches the model only on non-zero exit, as an error-repair prompt (`aider/commands.py` `cmd_test`/`cmd_run(add_on_nonzero_exit)`, `aider/linter.py` `run_cmd`, `aider/coders/base_coder.py` `lint_edited`), which would turn context into a failure signal. Only `block` (exit 1, message on stdout) is expressible; warn exits 0, rewrite and context are dropped |
-
-Sources (checked against upstream HEAD, Nov 2026): openai/codex
-`codex-rs/hooks/schema/generated/*.command.output.schema.json` and
-`codex-rs/hooks/src/events/*.rs`; sst/opencode v1.19.3
-`packages/plugin/src/index.ts` (V1 `Hooks`),
-`packages/opencode/src/session/tools.ts` and `session/llm/request.ts`
-(V2 equivalents: `ctx.tool.hook("execute.after")`,
-`ctx.session.hook("context")`, per
-`services/www/src/docs/content/build/plugins/migrate-v1.mdx`);
-OpenHands/software-agent-sdk `openhands-sdk/openhands/sdk/hooks/`
-(`executor.py`, `conversation_hooks.py`); mistralai/mistral-vibe
-`vibe/plugins/builtins/vibe/skills/vibe/SKILL.md` (Hooks);
-aaif-goose/goose `documentation/docs/guides/context-engineering/hooks.md`;
-Aider-AI/aider `aider/commands.py`.
+Per-harness delivery (block, warn, rewrite, context channel, entrypoint,
+known bugs) lives in [parity.md](parity.md); the context contract is
+[handler contract § Context](../spec/handler-contract.md#context). Not
+repeated here to avoid drift.
 
 ## How to read this matrix
 
@@ -176,7 +146,7 @@ Recurring blockers (lifted from each `capabilities.yaml`'s
   original's output and exit status reach Aider otherwise. Per-language
   `lint-cmd: "python: cmd"` entries are wrapped per language; YAML list
   forms are rejected. Caveat: a fresh global `lint-cmd` replaces Aider's
-  built-in linter for all languages. `PostToolUseFailure` is
+  built-in linter for all languages (see [parity](parity.md#flag-aider)). `PostToolUseFailure` is
   undeclared in
   [`adapters/aider/capabilities.yaml`](../adapters/aider/capabilities.yaml)
   and rendered `?` pending a file amendment.
