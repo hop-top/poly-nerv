@@ -128,7 +128,8 @@ text keeps its head, is cut on a UTF-8 boundary, and ends with the
 marker `\n[nerv: context truncated]`; the total including the marker
 stays within the cap.
 
-Delivery is per adapter. Where the host CLI has a model-context
+Delivery is per adapter (summary of block/warn/rewrite/context per
+harness and known bugs: [docs/parity.md](../docs/parity.md)). Where the host CLI has a model-context
 channel on the event, the adapter maps `context` onto it; otherwise
 it is dropped silently. The handler cannot tell which happened, so
 `context` is best-effort and must not carry anything a decision
@@ -140,9 +141,9 @@ depends on.
 | gemini | `hookSpecificOutput.additionalContext` | native SessionStart, BeforeAgent, AfterTool |
 | codex | `hookSpecificOutput.additionalContext` (with `hookEventName`); same encoding as claude | SessionStart, UserPromptSubmit, PreToolUse, PostToolUse (Stop and compaction outputs reject the field, so dropped) |
 | opencode | bridge plugin appends to the tool result (`tool.execute.after` `output.output`) or pushes onto the system prompt (`experimental.chat.system.transform`) | native `tool.execute.after` (PostToolUse), `session.created` (SessionStart, delivered via the plugin `event` hook); OpenCode plugin API v1, `>=1.19.3 <2.0.0` |
-| openhands | top-level `additionalContext` | SessionStart, UserPromptSubmit |
-| vibe | `hook_specific_output.additional_context` | `post_tool` (ToolResultEvent) |
-| goose | none — dropped | — |
+| openhands | top-level `additionalContext` (decision key is `action`, host reads `decision`; see [parity](../docs/parity.md#flag-openhands)) | SessionStart, UserPromptSubmit |
+| vibe | `hook_specific_output.additional_context`; see [parity](../docs/parity.md#flag-vibe) for the block/decode bugs | `post_tool` (ToolResultEvent) |
+| goose | none — dropped; hooks are observation-only except PreToolUse/Stop block | — |
 | aider | none — dropped. `lint-cmd`/`test-cmd` output reaches the model only on non-zero exit as an error-repair prompt (`aider/commands.py` `cmd_test`, `aider/linter.py` `run_cmd`); context would read as a failure | — |
 
 Adapter selection: `nervd --adapter <cli>` (aider, codex, gemini, opencode,

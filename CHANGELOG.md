@@ -84,6 +84,13 @@ in the first tagged release.
 - Handler contract: documents `context`; default timeout corrected to
   10s (was documented as 30s).
 
+### Docs
+
+- `docs/parity.md`: one-page harness parity summary (versions,
+  entrypoint, block/warn/rewrite/context) with flagged gaps for
+  OpenHands, Vibe, OpenCode, Aider, Goose, Codex; README table
+  corrected for Aider (2/26).
+
 ### Project rename
 
 - **`uhp` → `nerv`** — wire-breaking rename across module path, binary
