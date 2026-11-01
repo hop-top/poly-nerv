@@ -10,24 +10,6 @@ in the first tagged release.
 
 ## Unreleased
 
-### OpenCode v2 bridge and install
-
-- `nerv install add opencode` now works: the generic installer supports
-  multi-file adapters (`MultiFileAdapter`), journaling, backing up,
-  verifying, rolling back and uninstalling every file, and the registry
-  gives the opencode adapter the `nervd` command (PATH-resolved, like the
-  gemini and codex adapters). Before, only `opencode.json` was a managed
-  path and the empty nervd path made the command fail; the bridge plugin
-  was only reachable through the adapter's own `Install`.
-- OpenCode plugin API v2 bridge (`Plugin.define` + `setup(ctx)`), selected
-  by `opencode --version`: installs `.opencode/nerv-bridge/index.ts` and a
-  `plugins` entry in `opencode.json`; switching OpenCode generations
-  replaces the other bridge in place. Same `nervd --adapter opencode`
-  wire shape: tool before (block) and after (context), session context on
-  the system prompt, bus events via `ctx.event.subscribe()`.
-- Pinned OpenCode 2.2.5 (GitHub release; not on npm) next to 1.19.3
-  (`versions.yaml`, `cli_version_range`, `opencode-v2` compose service).
-
 ### Goose hooks
 
 - `nervd --adapter goose` route: decodes Goose plugin-hook payloads
