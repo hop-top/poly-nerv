@@ -225,8 +225,8 @@ func TestSmoke_Capabilities(t *testing.T) {
 	if !caps.PostSession {
 		t.Error("PostSession should be true")
 	}
-	if !caps.Streaming {
-		t.Error("Streaming should be true (SSE support)")
+	if caps.Streaming {
+		t.Error("Streaming should be false (no SSE route)")
 	}
 }
 

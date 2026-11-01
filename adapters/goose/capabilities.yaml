@@ -2,9 +2,17 @@
 # Source: aaif-goose/goose v1.55.0
 #   documentation/docs/guides/context-engineering/hooks.md
 #   crates/goose/src/hooks/mod.rs (plugin hooks, hooks/hooks.json)
-# Hook events (the first block below) are delivered by `nervd --adapter
-# goose`. Entries marked SSE come from goose-server's event stream and are
-# not delivered by any hook; no installed route carries them.
+# Every native entry is a plugin hook the installer writes to hooks.json
+# and `nervd --adapter goose` decodes (adapters/goose/translate.go
+# hookToNerv). Goose delivers nothing else to nerv: no SSE or MCP bridge is
+# installed, and no hook payload is turned into a synthesized event, so
+# there are no synthesized or close entries.
+#
+# Goose hook events not mapped (hooks.md "Supported Events"):
+#   PreToolUseResult      observation of the PreToolUse chain outcome
+#   BeforeReadFile        no nerv event
+#   BeforeShellExecution  duplicates PreToolUse(shell)
+#   AfterShellExecution   duplicates PostToolUse(shell)
 cli: goose
 cli_version_range: ">=1.55.0"
 
@@ -33,65 +41,23 @@ native:
   - goose: AfterFileEdit
     nerv: FileChanged
     note: plugin hook; matcher_context is the edited path
-  - goose: notification
-    nerv: Notification
-    note: SSE Notification (ServerNotification via request_id)
-  - goose: update_conversation
-    nerv: PostCompact
-    note: SSE UpdateConversation with full Conversation object
-  - goose: action_required
-    nerv: PermissionRequest
-    note: ActionRequired route in goose-server
-  - goose: permission_denied
-    nerv: PermissionDenied
-    note: Permission::DenyOnce / AlwaysDeny from permission system
-  - goose: subagent_created
-    nerv: SubagentStart
-    note: summon subagent_created notification
-  - goose: subagent_completed
-    nerv: SubagentStop
-    note: summon completed notification
-  - goose: subagent_terminated
-    nerv: SubagentStop
-    note: summon terminated notification
-  - goose: tasks_complete
-    nerv: TaskCompleted
-    note: TasksComplete notification event
-  - goose: error
-    nerv: StopFailure
-    note: SSE Error event (error string)
-
-close:
-  - goose: tasks_update
-    nerv: TaskCreated
-    note: TasksUpdate Pending->Running transition in notification
-
-synthesized:
-  - nerv: CwdChanged
-    source: shell-match
-    pattern: developer__shell command matches ^cd\b
-  - nerv: WorktreeCreate
-    source: shell-match
-    pattern: developer__shell command matches worktree add|git hop add
-  - nerv: WorktreeRemove
-    source: shell-match
-    pattern: developer__shell command matches worktree remove|git hop remove
-  - nerv: PreCompact
-    source: signal
-    pattern: compaction request from session
-  - nerv: InstructionsLoaded
-    source: extension
-    pattern: skills extension load event
-  - nerv: TaskCreated
-    source: notification
-    pattern: TasksUpdate with Pending->Running status transition
 
 unsupported:
+  - StopFailure
+  - PermissionRequest
+  - PermissionDenied
+  - Notification
+  - SubagentStart
+  - SubagentStop
   - TeammateIdle
+  - TaskCreated
+  - TaskCompleted
+  - InstructionsLoaded
   - ConfigChange
+  - CwdChanged
+  - PreCompact
+  - PostCompact
+  - WorktreeCreate
+  - WorktreeRemove
   - Elicitation
   - ElicitationResult
-  - BeforeToolSelection
-  - LspDiagnostics
-  - SessionDiff
-  - SessionStatus
