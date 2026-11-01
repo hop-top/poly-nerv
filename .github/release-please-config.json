@@ -50,9 +50,10 @@
       "hidden": true
     }
   ],
-  "linked-versions": [
+  "plugins": [
     {
-      "group": "nerv",
+      "type": "linked-versions",
+      "groupName": "nerv",
       "components": ["nerv", "nerv-go", "nerv-ts", "nerv-py", "nerv-rs", "nerv-php"]
     }
   ],
