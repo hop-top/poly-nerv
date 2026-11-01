@@ -57,14 +57,14 @@ func (a *Adapter) Detect() (internal.DetectResult, error) {
 
 // Capabilities reports which hook points Goose supports.
 // Tool, session, prompt and stop events arrive natively through plugin
-// hooks (hooks.json); block is honored on PreToolUse and Stop only.
+// hooks (hooks.json); block is honored on PreToolUse and Stop only. No
+// streaming: no SSE route is installed.
 func (a *Adapter) Capabilities() internal.CapabilityMap {
 	return internal.CapabilityMap{
 		PreToolUse:  true,
 		PostToolUse: true,
 		PreSession:  true,
 		PostSession: true,
-		Streaming:   true,
 	}
 }
 

@@ -22,6 +22,8 @@ in the first tagged release.
   upgraded in place, idempotent. Remove any old `nerv-bridge` entry from
   `~/.config/goose/config.yaml` by hand.
 - Pinned goose 1.55.0 (`versions.yaml`, `cli_version_range >=1.55.0`).
+- Goose capability claims corrected to the 8 delivered plugin hooks
+  (8/26); undelivered SSE and shell-synthesized events listed unsupported.
 
 ### Removed
 
