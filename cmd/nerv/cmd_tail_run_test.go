@@ -29,7 +29,7 @@ func appendEntry(t *testing.T, path, event string) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	if _, err := f.Write(append(b, '\n')); err != nil {
 		t.Fatal(err)
 	}
