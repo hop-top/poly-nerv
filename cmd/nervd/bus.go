@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 
 	"hop.top/kit/go/runtime/bus"
+	sqlitebus "hop.top/kit/go/runtime/bus/sqlite"
 
 	"hop.top/nerv/internal/config"
 	"hop.top/nerv/internal/crtx"
@@ -84,7 +85,7 @@ func coreBus(bc config.BusConfig) bus.Bus {
 			log.Printf("nervd: bus sqlite dir %s: %v; falling back to memory", filepath.Dir(path), err)
 			return bus.New()
 		}
-		a, err := bus.NewSQLiteAdapter(path)
+		a, err := sqlitebus.NewAdapter(path)
 		if err != nil {
 			log.Printf("nervd: bus sqlite adapter %s: %v; falling back to memory", path, err)
 			return bus.New()

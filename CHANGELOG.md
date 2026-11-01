@@ -10,6 +10,15 @@ in the first tagged release.
 
 ## Unreleased
 
+### Dependencies
+
+- `hop.top/kit` v0.5.0-beta.1 -> v0.5.0-beta.6. kit moved reserved
+  `serve [service]` into core `service` group (`service start|stop|status|list`;
+  root `serve` kept as hidden deprecated alias). nerv does not wire kit
+  services (`nerv daemon` is its own command), so no nerv surface, unit
+  file or doc invoked `serve`; no migration needed.
+- `nervd` sqlite bus adapter: `bus.NewSQLiteAdapter` -> `bus/sqlite.NewAdapter`.
+
 ### Goose hooks
 
 - `nervd --adapter goose` route: decodes Goose plugin-hook payloads
