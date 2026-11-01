@@ -1,10 +1,21 @@
 # OpenCode adapter capability map for nerv.
 # Source: docs/research/opencode.md + docs/research/mappings.md
 cli: opencode
-# OpenCode plugin API v1 (default-exported plugin function; bus events via
-# the "event" hook). Verified against sst/opencode v1.19.3. Release line
-# v2.x uses a different plugin API (Plugin.define/setup) and is not covered.
-cli_version_range: ">=1.19.3 <2.0.0"
+# Two plugin API generations, one nervd wire shape; the installer picks the
+# bridge from `opencode --version`.
+#   v1 (1.x): default-exported plugin function; bus events via the "event"
+#     hook. Verified against sst/opencode v1.19.3.
+#   v2 (2.x): Plugin.define({id, setup(ctx)}); tool hooks via
+#     ctx.tool.hook, system prompt via ctx.session.hook("context"), bus
+#     events via ctx.event.subscribe. Verified against anomalyco/opencode
+#     v2.2.5 (also run against 2.2.1).
+# Sources below name the v1 events (the wire names nervd translates); the v2
+# bridge derives the ones v2 has no bus event for: file.edited from
+# edit/write/patch completions, todo.updated from todowrite completions,
+# session.idle from session.execution.succeeded/interrupted, session.error
+# from session.execution.failed, session.compacted from
+# session.compaction.ended.
+cli_version_range: ">=1.19.3 <2.0.0 || >=2.2.0 <3.0.0"
 
 native:
   - source: session.created

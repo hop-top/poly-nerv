@@ -173,14 +173,21 @@ func renderInstallAddPlan(cmd *cobra.Command, args []string) error {
 				"adapter %q returned no config paths; install would fail", name))
 			continue
 		}
-		effects = append(effects, cli.Effect{
-			Kind:       "update",
-			Target:     paths[0],
-			Reversible: true,
-			Detail: fmt.Sprintf(
-				"merge nerv adapter hook config for %q (backed-up, hash-verified atomic write)",
-				name),
-		})
+		// Multi-file adapters manage every ConfigPaths entry.
+		targets := paths[:1]
+		if _, multi := adapter.(adapters.MultiFileAdapter); multi {
+			targets = paths
+		}
+		for _, target := range targets {
+			effects = append(effects, cli.Effect{
+				Kind:       "update",
+				Target:     target,
+				Reversible: true,
+				Detail: fmt.Sprintf(
+					"merge nerv adapter hook config for %q (backed-up, hash-verified atomic write)",
+					name),
+			})
+		}
 		if stateErr == nil {
 			effects = append(effects,
 				cli.Effect{
