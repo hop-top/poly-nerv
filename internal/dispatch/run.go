@@ -69,6 +69,7 @@ type stdoutDecision struct {
 	Message string         `json:"message,omitempty"`
 	Rewrite any            `json:"rewrite,omitempty"`
 	Meta    map[string]any `json:"metadata,omitempty"`
+	Context string         `json:"context,omitempty"`
 }
 
 // resolveTimeout returns the effective timeout for a hook.
@@ -289,6 +290,7 @@ func (r *Runner) runOne(
 		Message:  out.Message,
 		Rewrite:  out.Rewrite,
 		Metadata: out.Meta,
+		Context:  out.Context,
 	}
 
 	// Resolve action: if stdout declares an action, check against exit code.

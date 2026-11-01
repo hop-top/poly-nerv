@@ -24,6 +24,8 @@ export interface Decision {
   message?: string;
   rewrite?: Record<string, unknown>;
   metadata?: Record<string, unknown>;
+  /** Model-facing text, valid with any action. */
+  context?: string;
 }
 
 /** Handler function: receives envelope, returns decision. */

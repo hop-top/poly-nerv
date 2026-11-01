@@ -458,7 +458,11 @@ type Decision struct {
 	Rewrite *structpb.Struct `protobuf:"bytes,3,opt,name=rewrite,proto3" json:"rewrite,omitempty"`
 	// Free-form metadata bag, merged across handlers (last-write-wins
 	// per key in the current Go merger).
-	Metadata      *structpb.Struct `protobuf:"bytes,4,opt,name=metadata,proto3" json:"metadata,omitempty"`
+	Metadata *structpb.Struct `protobuf:"bytes,4,opt,name=metadata,proto3" json:"metadata,omitempty"`
+	// Model-facing text, valid with any action. Merged across handlers
+	// in hook order (newline-separated, capped at 8 KiB); dropped when
+	// the merged action is block.
+	Context       string `protobuf:"bytes,5,opt,name=context,proto3" json:"context,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -519,6 +523,13 @@ func (x *Decision) GetMetadata() *structpb.Struct {
 		return x.Metadata
 	}
 	return nil
+}
+
+func (x *Decision) GetContext() string {
+	if x != nil {
+		return x.Context
+	}
+	return ""
 }
 
 // DispatchRequest carries a single envelope into the hot-path
@@ -805,12 +816,13 @@ const file_nerv_v1_event_proto_rawDesc = "" +
 	"\vsynthesized\x18\b \x01(\bR\vsynthesized\x12C\n" +
 	"\x10synthesis_source\x18\t \x01(\x0e2\x18.nerv.v1.SynthesisSourceR\x0fsynthesisSource\x12:\n" +
 	"\fcapabilities\x18\n" +
-	" \x01(\v2\x16.nerv.v1.CapabilityRefR\fcapabilities\"\xb5\x01\n" +
+	" \x01(\v2\x16.nerv.v1.CapabilityRefR\fcapabilities\"\xcf\x01\n" +
 	"\bDecision\x12'\n" +
 	"\x06action\x18\x01 \x01(\x0e2\x0f.nerv.v1.ActionR\x06action\x12\x18\n" +
 	"\amessage\x18\x02 \x01(\tR\amessage\x121\n" +
 	"\arewrite\x18\x03 \x01(\v2\x17.google.protobuf.StructR\arewrite\x123\n" +
-	"\bmetadata\x18\x04 \x01(\v2\x17.google.protobuf.StructR\bmetadata\"@\n" +
+	"\bmetadata\x18\x04 \x01(\v2\x17.google.protobuf.StructR\bmetadata\x12\x18\n" +
+	"\acontext\x18\x05 \x01(\tR\acontext\"@\n" +
 	"\x0fDispatchRequest\x12-\n" +
 	"\benvelope\x18\x01 \x01(\v2\x11.nerv.v1.EnvelopeR\benvelope\"A\n" +
 	"\x10DispatchResponse\x12-\n" +

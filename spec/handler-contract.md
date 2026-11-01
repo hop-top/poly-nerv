@@ -79,6 +79,7 @@ action: allow | warn | block | rewrite   # required
 message: string                          # optional; shown for warn/block
 rewrite: object                          # optional; replacement payload (action=rewrite)
 metadata: object                         # optional; attached to event log entry
+context: string                          # optional; model-facing text, any action
 ```
 
 Decision schema:
@@ -89,6 +90,7 @@ Decision schema:
 | `message`  | string | no       | Human-readable; shown for warn/block. Accumulated alongside rewrite if both present. |
 | `rewrite`  | object | no       | Replacement payload; action must be rewrite |
 | `metadata` | object | no       | Arbitrary KV; persisted in event log   |
+| `context`  | string | no       | Text for the model's context window. Valid with any action; see [Context](#context) |
 
 Action MUST match exit code:
 - `allow` -> exit 0
@@ -99,10 +101,52 @@ Action MUST match exit code:
 Mismatch: exit code wins. Dispatcher logs the mismatch at
 level=warn. Fields are interpreted against the effective action:
 
-- exit 0 (allow): ignore `message` and `rewrite`; honor `metadata`
-- exit 1 (warn): honor `message`; ignore `rewrite`; honor `metadata`
-- exit 2 (block): honor `message`; ignore `rewrite`; honor `metadata`
-- exit 3 (rewrite): honor `rewrite`; ignore `message`; honor `metadata`
+- exit 0 (allow): ignore `message` and `rewrite`; honor `metadata`, `context`
+- exit 1 (warn): honor `message`; ignore `rewrite`; honor `metadata`, `context`
+- exit 2 (block): honor `message`; ignore `rewrite`; honor `metadata`;
+  `context` is accepted but dropped at merge
+- exit 3 (rewrite): honor `rewrite`; ignore `message`; honor `metadata`, `context`
+
+## Context
+
+`context` carries text meant for the model, not the user (`message`
+is the user-facing channel). It never changes the action or the exit
+code: a handler that only wants to inform the model exits 0 with
+
+```json
+{"action": "allow", "context": "src/auth.go: 3 callers outside this package"}
+```
+
+Merge: contexts from every non-blocking hook concatenate in hook
+order, newline-separated. They survive alongside warn and rewrite.
+If the merged action is `block`, all context is dropped (the event
+does not proceed, so there is nothing to inform). Empty or absent
+`context` contributes nothing.
+
+Size cap: the merged context is capped at 8 KiB (8192 bytes). Longer
+text keeps its head, is cut on a UTF-8 boundary, and ends with the
+marker `\n[nerv: context truncated]`; the total including the marker
+stays within the cap.
+
+Delivery is per adapter. Where the host CLI has a model-context
+channel on the event, the adapter maps `context` onto it; otherwise
+it is dropped silently. The handler cannot tell which happened, so
+`context` is best-effort and must not carry anything a decision
+depends on.
+
+| CLI    | Channel | Events |
+|--------|---------|--------|
+| claude | `hookSpecificOutput.additionalContext` (with `hookEventName`); exit code unchanged | SessionStart, SubagentStart, UserPromptSubmit, PreToolUse, PostToolUse, PostToolUseFailure, Stop, SubagentStop |
+| gemini | `hookSpecificOutput.additionalContext` | native SessionStart, BeforeAgent, AfterTool |
+| others | none — dropped | — |
+
+Claude notes: on `PreToolUse` with `rewrite`, `additionalContext` is
+added next to `updatedInput` in the same `hookSpecificOutput` (the
+rewrite exit code is unchanged). `PermissionRequest` has no context
+channel. On `Stop`/`SubagentStop`, Claude treats additional context
+as feedback and continues the conversation instead of stopping — emit
+context there only when that is intended. Claude truncates hook
+output beyond 10,000 characters; the 8 KiB cap keeps nerv under it.
 
 ## Merge Semantics
 
@@ -120,6 +164,9 @@ Rules:
    behavior applies only to the errored hook — it does not override
    `block`, `rewrite`, or `warn` decisions from other hooks.
 
+5. `context` strings concatenate in hook order (newline-separated,
+   capped at 8 KiB); dropped when the merged action is `block`
+
 Composition example (3 hooks on `PreToolUse`):
 
 ```
@@ -135,7 +182,7 @@ Final: `{ action: "rewrite", rewrite: { tool_input: { command: "ls -la" } }, mes
 
 | Setting         | Value      |
 |-----------------|------------|
-| Default         | 30 seconds |
+| Default         | 10 seconds (`defaults.timeout` in `hooks.yaml`) |
 | Configurable    | Per-hook in `hooks.yaml` (`timeout` field)  |
 | On timeout      | Kill process, treat as error -> fail-open   |
 | Minimum allowed | 1 second   |

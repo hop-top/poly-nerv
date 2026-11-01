@@ -53,7 +53,7 @@ stderr (if any) at level=error, then returns `allow` to the
 adapter. No user-visible interruption.
 
 **#2 — Hook process times out**
-Handler exceeded its configured timeout (default 30s). Nerv sends
+Handler exceeded its configured timeout (default 10s). Nerv sends
 SIGTERM, waits 5s, then SIGKILL. Logs timeout at level=error.
 Returns `allow`. Common cause: handler waiting on network or
 stuck in a loop.

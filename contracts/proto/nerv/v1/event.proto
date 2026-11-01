@@ -97,6 +97,10 @@ message Decision {
   // Free-form metadata bag, merged across handlers (last-write-wins
   // per key in the current Go merger).
   google.protobuf.Struct metadata = 4;
+  // Model-facing text, valid with any action. Merged across handlers
+  // in hook order (newline-separated, capped at 8 KiB); dropped when
+  // the merged action is block.
+  string context = 5;
 }
 
 // DispatchRequest carries a single envelope into the hot-path

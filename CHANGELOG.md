@@ -10,6 +10,24 @@ in the first tagged release.
 
 ## Unreleased
 
+### Handler decision `context`
+
+- **Optional `context` string on every decision** — model-facing text,
+  valid with any action; exit codes unchanged. Merged in hook order
+  (newline-separated), capped at 8 KiB with a truncation marker,
+  dropped when the merged action is `block`.
+- Claude adapter emits it as `hookSpecificOutput.additionalContext`
+  on SessionStart, SubagentStart, UserPromptSubmit, PreToolUse,
+  PostToolUse, PostToolUseFailure, Stop, SubagentStop (also alongside
+  a PreToolUse rewrite); other events drop it.
+- Gemini adapter: new `FromEventDecision(d, geminiEvent)` emits
+  `hookSpecificOutput.additionalContext` on SessionStart, BeforeAgent,
+  AfterTool. Other adapters have no channel and drop it.
+- Proto `Decision.context = 5`; Go/TS/Python/PHP stubs regenerated;
+  Python and TS handler `Decision` types gain `context`.
+- Handler contract: documents `context`; default timeout corrected to
+  10s (was documented as 30s).
+
 ### Project rename
 
 - **`uhp` → `nerv`** — wire-breaking rename across module path, binary

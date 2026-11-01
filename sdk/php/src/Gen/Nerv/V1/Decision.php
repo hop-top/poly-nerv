@@ -38,6 +38,14 @@ class Decision extends \Google\Protobuf\Internal\Message
      * Generated from protobuf field <code>.google.protobuf.Struct metadata = 4 [json_name = "metadata"];</code>
      */
     protected $metadata = null;
+    /**
+     * Model-facing text, valid with any action. Merged across handlers
+     * in hook order (newline-separated, capped at 8 KiB); dropped when
+     * the merged action is block.
+     *
+     * Generated from protobuf field <code>string context = 5 [json_name = "context"];</code>
+     */
+    protected $context = '';
 
     /**
      * Constructor.
@@ -52,6 +60,10 @@ class Decision extends \Google\Protobuf\Internal\Message
      *     @type \Google\Protobuf\Struct $metadata
      *           Free-form metadata bag, merged across handlers (last-write-wins
      *           per key in the current Go merger).
+     *     @type string $context
+     *           Model-facing text, valid with any action. Merged across handlers
+     *           in hook order (newline-separated, capped at 8 KiB); dropped when
+     *           the merged action is block.
      * }
      */
     public function __construct($data = NULL) {
@@ -171,6 +183,36 @@ class Decision extends \Google\Protobuf\Internal\Message
     public function setMetadata(\Google\Protobuf\Struct|null $var)
     {
         $this->metadata = $var;
+
+        return $this;
+    }
+
+    /**
+     * Model-facing text, valid with any action. Merged across handlers
+     * in hook order (newline-separated, capped at 8 KiB); dropped when
+     * the merged action is block.
+     *
+     * Generated from protobuf field <code>string context = 5 [json_name = "context"];</code>
+     * @return string
+     */
+    public function getContext()
+    {
+        return $this->context;
+    }
+
+    /**
+     * Model-facing text, valid with any action. Merged across handlers
+     * in hook order (newline-separated, capped at 8 KiB); dropped when
+     * the merged action is block.
+     *
+     * Generated from protobuf field <code>string context = 5 [json_name = "context"];</code>
+     * @param string $var
+     * @return $this
+     */
+    public function setContext(string $var)
+    {
+        GPBUtil::checkString($var, true);
+        $this->context = $var;
 
         return $this;
     }
