@@ -138,6 +138,9 @@ func buildAdapters(t *testing.T) []adapterEntry {
 			adapter: &opencode.Adapter{
 				ProjectDir: home,
 				NervdPath:  "/usr/local/bin/nervd",
+				// Pin the plugin API: the contract must not depend on
+				// whether (or which) opencode is on the runner's PATH.
+				Version: "1.19.3",
 			},
 			capabilitiesFile: "opencode/capabilities.yaml",
 			translateInputs: [][]byte{
