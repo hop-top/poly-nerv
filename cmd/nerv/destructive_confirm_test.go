@@ -2,7 +2,6 @@ package main
 
 import (
 	"os/exec"
-	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -53,14 +52,4 @@ func TestDestructiveCommands_AcceptWithConfirmYes(t *testing.T) {
 		t.Fatalf("did not expect UNAUTHORIZED with --confirm=yes; got:\n%s", s)
 	}
 	_ = err // dry-run may still error on missing hook; we only assert the policy gate passed
-}
-
-func buildNerv(t *testing.T) string {
-	t.Helper()
-	bin := filepath.Join(t.TempDir(), "nerv-test")
-	out, err := exec.Command("go", "build", "-buildvcs=false", "-o", bin, ".").CombinedOutput()
-	if err != nil {
-		t.Fatalf("build failed: %v\n%s", err, out)
-	}
-	return bin
 }
