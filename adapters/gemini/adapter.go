@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 
 	internal "hop.top/nerv/adapters/internal"
 )
@@ -90,6 +91,7 @@ func (a *Adapter) MergeConfig(existing []byte) ([]byte, error) {
 	for _, ev := range geminiEvents {
 		entry := nervHookEntry(ev)
 		existing, _ := hooks[ev].([]any)
+		upgradeLegacy(existing)
 		if !hasNervEntry(existing) {
 			hooks[ev] = append(existing, entry)
 		}
@@ -130,6 +132,29 @@ func configPaths() []string {
 	return paths
 }
 
+// nervCommand is the hook command written for Gemini. --adapter makes
+// nervd answer in Gemini's dialect (incl. decision context); Gemini's
+// hook stdin carries hook_event_name, so no event argument is needed.
+const nervCommand = "nervd --adapter gemini"
+
+// legacyPrefix marks commands written before nervCommand existed
+// ("nerv-adapter gemini <event>"), which resolve to no binary.
+const legacyPrefix = "nerv-adapter gemini"
+
+// upgradeLegacy rewrites legacy nerv commands in place.
+func upgradeLegacy(hooks []any) {
+	for _, h := range hooks {
+		hm, _ := h.(map[string]any)
+		inner, _ := hm["hooks"].([]any)
+		for _, ih := range inner {
+			ihm, _ := ih.(map[string]any)
+			if c, _ := ihm["command"].(string); strings.HasPrefix(c, legacyPrefix) {
+				ihm["command"] = nervCommand
+			}
+		}
+	}
+}
+
 func nervHookEntry(event string) map[string]any {
 	return map[string]any{
 		"matcher":    ".*",
@@ -137,7 +162,7 @@ func nervHookEntry(event string) map[string]any {
 		"hooks": []any{
 			map[string]any{
 				"type":    "command",
-				"command": "nerv-adapter gemini " + event,
+				"command": nervCommand,
 				"name":    "nerv-" + event,
 				"timeout": 30000,
 			},
@@ -163,7 +188,7 @@ func hasNervEntry(hooks []any) bool {
 				continue
 			}
 			if t, _ := ihm["type"].(string); t == "command" {
-				if c, _ := ihm["command"].(string); len(c) >= 5 && c[:5] == "nerv-" {
+				if c, _ := ihm["command"].(string); c == nervCommand {
 					return true
 				}
 			}

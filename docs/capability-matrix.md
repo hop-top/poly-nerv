@@ -94,17 +94,15 @@ Delivery needs the host's hook command to select the adapter:
 decision with its `FromEventDecision`, passing the real native event
 name. Without `--adapter`, nervd keeps the legacy behavior (input with
 `hook_event_name` is treated as Claude Code), so already-installed hooks
-are unchanged. `nerv install` writes the flag for openhands, vibe and
-the opencode bridge. Gemini and codex still install commands that do not
-resolve to nervd (`nerv-adapter gemini <event>`, `nerv dispatch`), so
-their context is not delivered until those commands are fixed.
+are unchanged. `nerv install` writes the flag for gemini, codex, openhands, vibe and
+the opencode bridge; legacy commands are upgraded on reinstall.
 
 | Adapter   | Context injection | Channel / events |
 |-----------|:-----------------:|------------------|
 | claude    | ✓ | `hookSpecificOutput.additionalContext` on SessionStart, SubagentStart, UserPromptSubmit, PreToolUse, PostToolUse, PostToolUseFailure, Stop, SubagentStop |
-| gemini    | ✓ translator wired (`nervd --adapter gemini`); installed hook command not yet | `hookSpecificOutput.additionalContext` on native SessionStart, BeforeAgent (SubagentStart), AfterTool (PostToolUse) via `gemini.FromEventDecision` |
+| gemini    | ✓ end to end | hook command `nervd --adapter gemini`; `hookSpecificOutput.additionalContext` on native SessionStart, BeforeAgent (SubagentStart), AfterTool (PostToolUse) via `gemini.FromEventDecision` |
 | opencode  | ✓ end to end | `nerv install opencode` bridge calls `nervd --adapter opencode`; bridge plugin: `tool.execute.after` appends to `output.output` (PostToolUse); `session.created` (delivered through the plugin `event` hook) context pushed via `experimental.chat.system.transform` (SessionStart); via `opencode.FromEventDecision`. No channel on `tool.execute.before` (args only) |
-| codex     | ✓ translator wired (`nervd --adapter codex`); installed hook command not yet | `hookSpecificOutput.additionalContext` on SessionStart, UserPromptSubmit, PreToolUse, PostToolUse via `codex.FromEventDecision`; Stop / SubagentStop / compaction outputs reject unknown fields, so dropped there |
+| codex     | ✓ end to end | hook command `nervd --adapter codex`; `hookSpecificOutput.additionalContext` on SessionStart, UserPromptSubmit, PreToolUse, PostToolUse via `codex.FromEventDecision`; Stop / SubagentStop / compaction outputs reject unknown fields, so dropped there |
 | goose     | - | hooks are observation-only except PreToolUse/Stop block; hook stdout is read only for the decision and, on SessionStart, a user-visible `banner` stored with `agent_visible=false` (`crates/goose/src/hooks/mod.rs` `emit_collecting_banners`, `agents/state_machine/session.rs` `session_start_message`) |
 | openhands | ✓ end to end | hook command `nervd --adapter openhands`; top-level `additionalContext` on SessionStart (emitted as a message after the system prompt) and UserPromptSubmit (appended to extended content) via `openhands.FromEventDecision`; PreToolUse/PostToolUse results are not consumed |
 | vibe      | ✓ end to end | hook command `nervd --adapter vibe`; `hook_specific_output.additional_context` on `post_tool` (ToolResultEvent), appended to the tool output the LLM sees, via `vibe.FromEventDecision`; `pre_tool` / `post_agent` have no context field |
