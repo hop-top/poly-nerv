@@ -114,6 +114,14 @@ func (a *Adapter) FeatureEnabled() bool {
 	return false
 }
 
+// nervCommand is the hook command written for Codex. --adapter makes
+// nervd answer in Codex's dialect (incl. decision context).
+const nervCommand = "nervd --adapter codex"
+
+// legacyCommand was written before nervCommand existed; it names a
+// subcommand that does not exist.
+const legacyCommand = "nerv dispatch"
+
 // codexHooksConfig mirrors the Codex hooks.json schema.
 type codexHooksConfig struct {
 	Hooks map[string][]codexHookEntry `json:"hooks"`
@@ -155,8 +163,6 @@ func (a *Adapter) MergeConfig(existing []byte) ([]byte, error) {
 		}
 		hooks = m
 	}
-
-	nervCommand := "nerv dispatch"
 
 	// Register nerv handler for each native event, then the shell
 	// matcher for PreToolUse/PostToolUse.
@@ -212,6 +218,19 @@ func mergeNervEntry(raw any, matcher, command string) ([]any, error) {
 	}
 
 	nervHook := map[string]any{"type": "command", "command": command}
+
+	// Upgrade legacy entries in place.
+	for _, e := range entries {
+		if entry, ok := e.(map[string]any); ok {
+			if hs, ok := entry["hooks"].([]any); ok {
+				for _, h := range hs {
+					if hm, ok := h.(map[string]any); ok && hm["command"] == legacyCommand {
+						hm["command"] = command
+					}
+				}
+			}
+		}
+	}
 
 	for i, e := range entries {
 		entry, ok := e.(map[string]any)

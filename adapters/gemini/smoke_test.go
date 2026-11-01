@@ -127,7 +127,7 @@ func TestSmoke_MergeAndDetect(t *testing.T) {
 	if hook["type"] != "command" {
 		t.Errorf("hook type = %v, want command", hook["type"])
 	}
-	if hook["command"] != "nerv-adapter gemini BeforeTool" {
+	if hook["command"] != "nervd --adapter gemini" {
 		t.Errorf("hook command = %v", hook["command"])
 	}
 }

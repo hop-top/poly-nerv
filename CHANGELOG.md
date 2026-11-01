@@ -47,9 +47,11 @@ in the first tagged release.
   hook (`session.created`); tool hooks send typed events; invokes
   `nervd --adapter opencode` (previously `nervd dispatch --format json`,
   which nervd never accepted).
-- Known gap: gemini (`nerv-adapter gemini <event>`) and codex
-  (`nerv dispatch`) install commands do not resolve to nervd, so their
-  context is not delivered end to end yet.
+- `nerv install` also writes `nervd --adapter gemini` (was
+  `nerv-adapter gemini <event>`) and `nervd --adapter codex` (was
+  `nerv dispatch`); neither legacy command resolved to a binary. Legacy
+  entries are upgraded on reinstall. Aider's `nerv dispatch aider`
+  commands are unchanged.
 - Goose and Aider have no model-context channel and drop it; see
   capability-matrix for sources.
 - Proto `Decision.context = 5`; Go/TS/Python/PHP stubs regenerated;
