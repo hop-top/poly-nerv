@@ -43,6 +43,7 @@ impl EventService for FakeEventService {
                 message,
                 rewrite: None,
                 metadata: None,
+                context: String::new(),
             }),
         }))
     }
