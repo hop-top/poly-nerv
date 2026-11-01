@@ -22,8 +22,16 @@ type Installer = internal.Installer
 // InstallRecord re-exports one install journal entry.
 type InstallRecord = internal.InstallRecord
 
+// MultiFileAdapter re-exports the multi-file adapter interface.
+type MultiFileAdapter = internal.MultiFileAdapter
+
 // NewInstaller re-exports the installer constructor.
 var NewInstaller = internal.NewInstaller
+
+// nervdCommand is the nervd command adapters that embed a path (opencode)
+// run: resolved on PATH, like the `nervd --adapter <cli>` hook commands
+// the gemini, codex and goose adapters write.
+const nervdCommand = "nervd"
 
 // Registry returns the map of all registered CLI adapters keyed by
 // canonical CLI name.
@@ -34,7 +42,7 @@ func Registry() map[string]HookAdapter {
 		"codex":     codex.New(),
 		"gemini":    &gemini.Adapter{},
 		"goose":     &goose.Adapter{},
-		"opencode":  &opencode.Adapter{},
+		"opencode":  &opencode.Adapter{NervdPath: nervdCommand},
 		"openhands": &openhands.Adapter{},
 	}
 }

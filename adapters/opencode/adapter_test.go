@@ -39,7 +39,7 @@ func TestAdapter_Capabilities(t *testing.T) {
 }
 
 func TestAdapter_ConfigPaths(t *testing.T) {
-	a := &Adapter{ProjectDir: "/tmp/proj"}
+	a := &Adapter{ProjectDir: "/tmp/proj", Version: "1.19.3"}
 	paths := a.ConfigPaths()
 	if len(paths) != 2 {
 		t.Fatalf("ConfigPaths() len = %d, want 2", len(paths))
@@ -54,7 +54,7 @@ func TestAdapter_ConfigPaths(t *testing.T) {
 }
 
 func TestAdapter_MergeConfig(t *testing.T) {
-	a := &Adapter{NervdPath: "/usr/local/bin/nervd"}
+	a := &Adapter{NervdPath: "/usr/local/bin/nervd", Version: "1.19.3"}
 	out, err := a.MergeConfig(nil)
 	if err != nil {
 		t.Fatalf("MergeConfig() error: %v", err)
@@ -69,6 +69,7 @@ func TestAdapter_Install(t *testing.T) {
 	a := &Adapter{
 		ProjectDir: dir,
 		NervdPath:  "/usr/local/bin/nervd",
+		Version:    "1.19.3",
 	}
 
 	if err := a.Install(); err != nil {
@@ -108,6 +109,7 @@ func TestAdapter_Install_ExistingConfig(t *testing.T) {
 	a := &Adapter{
 		ProjectDir: dir,
 		NervdPath:  "/usr/local/bin/nervd",
+		Version:    "1.19.3",
 	}
 	if err := a.Install(); err != nil {
 		t.Fatalf("Install() error: %v", err)

@@ -208,11 +208,13 @@ func GeneratePlugin(nervdPath string) (string, error) {
 		return "", fmt.Errorf("opencode: nervdPath must not be empty")
 	}
 
-	// Escape for safe interpolation into a TS string literal.
-	escaped := strings.ReplaceAll(nervdPath, `\`, `\\`)
-	escaped = strings.ReplaceAll(escaped, `"`, `\"`)
-	escaped = strings.ReplaceAll(escaped, "\n", `\n`)
-	escaped = strings.ReplaceAll(escaped, "\r", `\r`)
+	return fmt.Sprintf(pluginTemplate, escapeTS(nervdPath)), nil
+}
 
-	return fmt.Sprintf(pluginTemplate, escaped), nil
+// escapeTS escapes s for safe interpolation into a TS string literal.
+func escapeTS(s string) string {
+	s = strings.ReplaceAll(s, `\`, `\\`)
+	s = strings.ReplaceAll(s, `"`, `\"`)
+	s = strings.ReplaceAll(s, "\n", `\n`)
+	return strings.ReplaceAll(s, "\r", `\r`)
 }

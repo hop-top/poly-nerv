@@ -19,6 +19,7 @@ func TestSmoke_EndToEnd(t *testing.T) {
 	a := &Adapter{
 		ProjectDir: dir,
 		NervdPath:  "/usr/local/bin/nervd",
+		Version:    "1.19.3",
 	}
 
 	// Step 1: Install.
