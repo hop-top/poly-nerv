@@ -165,25 +165,11 @@ func run() int {
 // the decision encodes through that host CLI's translator, with the
 // native event name passed to the encoder.
 func runStateless(d *dispatch.Dispatcher, route *adapterRoute) int {
-	return runStatelessArgs(d, route, flag.Args(), os.Stdin, os.Stdout, os.Stderr)
+	return runStatelessIO(d, route, os.Stdin, os.Stdout, os.Stderr)
 }
 
 // runStatelessIO is runStateless over explicit streams (testable).
 func runStatelessIO(d *dispatch.Dispatcher, route *adapterRoute, in io.Reader, out, errw io.Writer) int {
-	return runStatelessArgs(d, route, nil, in, out, errw)
-}
-
-// runStatelessArgs is runStatelessIO plus the positional args. A route
-// with fromArgs reads them instead of stdin and leaves stdin untouched.
-func runStatelessArgs(d *dispatch.Dispatcher, route *adapterRoute, args []string, in io.Reader, out, errw io.Writer) int {
-	if route != nil && route.fromArgs != nil {
-		raw, err := route.fromArgs(args)
-		if err != nil {
-			fmt.Fprintf(errw, "nervd: %v\n", err)
-			return 2
-		}
-		return runAdapter(d, route, raw, out, errw)
-	}
 	raw, err := io.ReadAll(io.LimitReader(in, envelope.HardMaxEnvelopeSize+1))
 	if err != nil {
 		fmt.Fprintf(errw, "nervd: failed to read stdin: %v\n", err)

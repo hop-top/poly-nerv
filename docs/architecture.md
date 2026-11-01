@@ -8,7 +8,7 @@ Author: $USER
 `hop.top/nerv` is the Universal Hooks Protocol — a daemon
 dispatcher plus envelope protocol that unifies hook event
 handling across AI coding CLIs (Claude Code, Gemini CLI,
-Codex CLI, OpenCode, Aider, Goose, Vibe, OpenHands).
+Codex CLI, OpenCode, Goose, OpenHands).
 
 Hook authors write a single handler. nerv's adapters translate
 between each CLI's native event model and a shared envelope,
@@ -38,7 +38,7 @@ Cross-references:
 |---|---|---|
 | `nervd` daemon | `cmd/nervd/` | Stateless hot-path dispatcher; auto-detects CLI; fail-open invariant |
 | `nerv` CLI | `cmd/nerv/` | User-facing toolchain (hook add/remove, doctor, lint, test, tail, replay, status, upgrade, daemon start/stop) |
-| Adapters (8) | `adapters/{claude,codex,gemini,opencode,aider,goose,vibe,openhands}/` | Per-CLI ToEnvelope + FromDecision + capabilities.yaml |
+| Adapters (6) | `adapters/{claude,codex,gemini,opencode,goose,openhands}/` | Per-CLI ToEnvelope + FromDecision + capabilities.yaml |
 | Specs | `spec/` | Envelope schema, events catalog, capabilities schema, hooks schema, redaction patterns |
 
 ## Components
@@ -59,7 +59,7 @@ The fail-open invariant means: if nerv itself errors (config corrupt, handler cr
 
 Eight adapters today. Full per-adapter event coverage matrix:
 [`docs/capability-matrix.md`](capability-matrix.md) (✓ native / ~
-synthesized / - uncovered, 8 adapters × 26 events). Quick summary:
+synthesized / - uncovered, 6 adapters × 26 events). Quick summary:
 
 | CLI | Native events | Synthesised | Coverage |
 |---|---:|---:|---:|
@@ -69,8 +69,6 @@ synthesized / - uncovered, 8 adapters × 26 events). Quick summary:
 | Goose | 11 | 11 | 22/26 |
 | OpenHands | 5 | 15 | 20/26 |
 | Codex CLI | 3 | 12 | 15/26 |
-| Vibe | 6 | 8 | 14/26 |
-| Aider | 0 | 5 | 5/26 |
 
 Each adapter implements `adapters/internal/adapter.go`:
 
@@ -225,7 +223,7 @@ ADRs in `docs/architecture/`:
 ### Recent significant changes
 
 - Phase 11 (CI / Docker / scenarios / conformance / release) approaching done
-- Adapter ecosystem expanded 4 → 8: aider, goose, vibe, openhands added
+- Adapter ecosystem expanded 4 → 6: goose, openhands added
 - Phase 10: doctor, lint, test, tail, replay, status, upgrade
 - Phase 9: hook add/remove, marketplace, agents-md starter
 - Origin field on events (`feat(events): add origin field` — native|derived|extension)
@@ -235,7 +233,7 @@ ADRs in `docs/architecture/`:
 
 ### Adopter status
 
-8 CLI adapters in tree; coverage matrix in `docs/research/mappings.md` last verified 2026-04-17.
+6 CLI adapters in tree; coverage matrix in `docs/research/mappings.md` last verified 2026-04-17.
 
 ## Open questions
 

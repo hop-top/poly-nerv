@@ -1,6 +1,6 @@
 ---
 name: nerv
-description: "Universal Hooks Protocol — write hooks once, run them on every AI coding CLI. Use when the user wants to install, author, test, replay, disable, or debug hooks across Claude Code, Codex, Gemini, OpenCode, OpenHands, Aider, Goose, or Vibe."
+description: "Universal Hooks Protocol — write hooks once, run them on every AI coding CLI. Use when the user wants to install, author, test, replay, disable, or debug hooks across Claude Code, Codex, Gemini, OpenCode, OpenHands, or Goose."
 license: MIT
 metadata:
   status: stable
@@ -39,8 +39,8 @@ shipped user-facing verb. Each verb section below carries a
 - The user wants to silence or scope down a hook without deleting it
   (disable a whole hook, an event class, or a specific binding).
 - The user wants to install or refresh per-CLI adapters
-  (`claude`, `codex`, `gemini`, `opencode`, `openhands`, `aider`,
-  `goose`, `vibe`).
+  (`claude`, `codex`, `gemini`, `opencode`, `openhands`,
+  `goose`).
 - The user wants a health check of the dispatch pipeline (`doctor`).
 - The user mentions: hook, guardrail, audit log, block command,
   rewrite payload, fail-open, envelope, PreToolUse / PostToolUse /
@@ -131,7 +131,7 @@ the daemon falls back automatically, but you can also set
 ## Adapters
 
 **Status: stable for `claude`, `codex`, `gemini`, `opencode`.
-Pre-release for `openhands`, `aider`, `goose`, `vibe`.**
+Pre-release for `openhands`, `goose`.**
 
 Each adapter knows how to translate one CLI's native hook surface
 into nerv envelopes and decisions back into the CLI's native
@@ -160,7 +160,7 @@ events it emits natively versus synthesizes. The
 handlers branch on `envelope.synthesized` when they need to know.
 
 Full per-adapter coverage matrix (✓ native / ~ synthesized / -
-uncovered, all 8 adapters × 26 events):
+uncovered, all 6 adapters × 26 events):
 [`docs/capability-matrix.md`](../../../docs/capability-matrix.md).
 
 ## Events — 36 canonical entries

@@ -31,7 +31,7 @@ RUN if [ "$CLI_INSTALL_METHOD" = "npm" ]; then \
       { echo "ERROR: Failed to install pip package '${CLI_PACKAGE}'" >&2; exit 1; }; \
     fi
 
-# Python for aider
+# Python for pip-installed CLIs
 RUN if [ "$CLI_INSTALL_METHOD" = "pip" ]; then \
       apt-get update && apt-get install -y --no-install-recommends python3 python3-pip && \
       rm -rf /var/lib/apt/lists/* && \
