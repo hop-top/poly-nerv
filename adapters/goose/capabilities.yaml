@@ -1,17 +1,38 @@
 # Goose CLI capability map for nerv adapter.
-# Source: aaif-goose/goose (crates/goose-server, crates/goose/src/permission)
+# Source: aaif-goose/goose v1.55.0
+#   documentation/docs/guides/context-engineering/hooks.md
+#   crates/goose/src/hooks/mod.rs (plugin hooks, hooks/hooks.json)
+# Hook events (the first block below) are delivered by `nervd --adapter
+# goose`. Entries marked SSE come from goose-server's event stream and are
+# not delivered by any hook; no installed route carries them.
 cli: goose
+cli_version_range: ">=1.55.0"
 
 native:
-  - goose: session.start
+  - goose: SessionStart
     nerv: SessionStart
-    note: SSE session lifecycle
-  - goose: session.end
+    note: plugin hook; block ignored, banner stdout is user-visible only
+  - goose: SessionEnd
     nerv: SessionEnd
-    note: SSE session lifecycle
-  - goose: finish
+    note: plugin hook
+  - goose: Stop
     nerv: Stop
-    note: SSE Finish event with reason + token_state
+    note: plugin hook; block keeps the turn going (reason shown to model)
+  - goose: UserPromptSubmit
+    nerv: UserPromptSubmit
+    note: plugin hook; block ignored
+  - goose: PreToolUse
+    nerv: PreToolUse
+    note: plugin hook; block denies the call (reason shown to model)
+  - goose: PostToolUse
+    nerv: PostToolUse
+    note: plugin hook; observation only
+  - goose: PostToolUseFailure
+    nerv: PostToolUseFailure
+    note: plugin hook; observation only
+  - goose: AfterFileEdit
+    nerv: FileChanged
+    note: plugin hook; matcher_context is the edited path
   - goose: notification
     nerv: Notification
     note: SSE Notification (ServerNotification via request_id)
@@ -41,26 +62,11 @@ native:
     note: SSE Error event (error string)
 
 close:
-  - goose: request.start
-    nerv: UserPromptSubmit
-    note: SSE request start; approximate — fires per request, not per user prompt
   - goose: tasks_update
     nerv: TaskCreated
     note: TasksUpdate Pending->Running transition in notification
 
 synthesized:
-  - nerv: PreToolUse
-    source: extension
-    pattern: tool.before event from nerv bridge MCP extension
-  - nerv: PostToolUse
-    source: extension
-    pattern: tool.after event from nerv bridge MCP extension
-  - nerv: PostToolUseFailure
-    source: extension
-    pattern: tool.error event from nerv bridge MCP extension
-  - nerv: FileChanged
-    source: extension
-    pattern: developer ext file ops (text_editor, write_file)
   - nerv: CwdChanged
     source: shell-match
     pattern: developer__shell command matches ^cd\b

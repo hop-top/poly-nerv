@@ -23,7 +23,7 @@ import (
 // hook_event_name input is read as Claude Code, anything else as a
 // nerv envelope.
 var adapterFlag = flag.String("adapter", "",
-	"host CLI dialect for stateless stdin/stdout (codex, gemini, opencode, openhands)")
+	"host CLI dialect for stateless stdin/stdout (codex, gemini, goose, opencode, openhands)")
 
 // adapterRoute translates one host CLI's native hook I/O.
 type adapterRoute struct {
@@ -39,6 +39,7 @@ type adapterRoute struct {
 var adapterRoutes = map[string]adapterRoute{
 	"codex":     {decodeCodex, encodeCodex},
 	"gemini":    {decodeGemini, encodeGemini},
+	"goose":     {decodeGoose, encodeGoose},
 	"openhands": {decodeOpenHands, encodeOpenHands},
 	"opencode":  {decodeOpenCode, encodeOpenCode},
 }
