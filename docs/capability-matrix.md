@@ -93,12 +93,26 @@ Where there is no channel, `context` is dropped silently.
 |-----------|:-----------------:|------------------|
 | claude    | ✓ | `hookSpecificOutput.additionalContext` on SessionStart, SubagentStart, UserPromptSubmit, PreToolUse, PostToolUse, PostToolUseFailure, Stop, SubagentStop |
 | gemini    | ✓ | `hookSpecificOutput.additionalContext` on native SessionStart, BeforeAgent (SubagentStart), AfterTool (PostToolUse) via `gemini.FromEventDecision` |
-| opencode  | - | no model-context channel in the plugin decision |
-| codex     | - | no model-context channel |
-| goose     | - | not wired |
-| openhands | - | not wired |
-| vibe      | - | not wired |
-| aider     | - | no hook protocol |
+| opencode  | ✓ | bridge plugin: `tool.execute.after` appends to `output.output` (PostToolUse); `session.created` context pushed via `experimental.chat.system.transform` (SessionStart); via `opencode.FromEventDecision`. No channel on `tool.execute.before` (args only) |
+| codex     | ✓ | `hookSpecificOutput.additionalContext` on SessionStart, UserPromptSubmit, PreToolUse, PostToolUse via `codex.FromEventDecision`; Stop / SubagentStop / compaction outputs reject unknown fields, so dropped there |
+| goose     | - | hooks are observation-only except PreToolUse/Stop block; hook stdout is read only for the decision and, on SessionStart, a user-visible `banner` stored with `agent_visible=false` (`crates/goose/src/hooks/mod.rs` `emit_collecting_banners`, `agents/state_machine/session.rs` `session_start_message`) |
+| openhands | ✓ | top-level `additionalContext` on SessionStart (emitted as a message after the system prompt) and UserPromptSubmit (appended to extended content) via `openhands.FromEventDecision`; PreToolUse/PostToolUse results are not consumed |
+| vibe      | ✓ | `hook_specific_output.additional_context` on `post_tool` (ToolResultEvent), appended to the tool output the LLM sees, via `vibe.FromEventDecision`; `pre_tool` / `post_agent` have no context field |
+| aider     | - | no hook protocol; `lint-cmd` / `test-cmd` output reaches the model only on non-zero exit as an error-repair prompt (`aider/commands.py` `cmd_test`), which would turn context into a failure signal |
+
+Sources (checked against upstream HEAD, Nov 2026): openai/codex
+`codex-rs/hooks/schema/generated/*.command.output.schema.json` and
+`codex-rs/hooks/src/events/*.rs`; sst/opencode v1.19.5
+`packages/plugin/src/index.ts` (V1 `Hooks`),
+`packages/opencode/src/session/tools.ts` and `session/llm/request.ts`
+(V2 equivalents: `ctx.tool.hook("execute.after")`,
+`ctx.session.hook("context")`, per
+`services/www/src/docs/content/build/plugins/migrate-v1.mdx`);
+OpenHands/software-agent-sdk `openhands-sdk/openhands/sdk/hooks/`
+(`executor.py`, `conversation_hooks.py`); mistralai/mistral-vibe
+`vibe/plugins/builtins/vibe/skills/vibe/SKILL.md` (Hooks);
+aaif-goose/goose `documentation/docs/guides/context-engineering/hooks.md`;
+Aider-AI/aider `aider/commands.py`.
 
 ## How to read this matrix
 

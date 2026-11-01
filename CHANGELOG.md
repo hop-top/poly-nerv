@@ -22,7 +22,21 @@ in the first tagged release.
   a PreToolUse rewrite); other events drop it.
 - Gemini adapter: new `FromEventDecision(d, geminiEvent)` emits
   `hookSpecificOutput.additionalContext` on SessionStart, BeforeAgent,
-  AfterTool. Other adapters have no channel and drop it.
+  AfterTool.
+- Codex adapter: new `FromEventDecision(d, codexEvent)` emits
+  `hookSpecificOutput.additionalContext` on SessionStart,
+  UserPromptSubmit, PreToolUse, PostToolUse (Stop/compaction outputs
+  reject unknown fields, so dropped).
+- OpenHands adapter: `FromEventDecision` emits top-level
+  `additionalContext` on SessionStart, UserPromptSubmit.
+- Vibe adapter: `FromEventDecision` emits
+  `hook_specific_output.additional_context` on post_tool
+  (ToolResultEvent).
+- OpenCode adapter: `FromEventDecision` + bridge plugin deliver context
+  via `tool.execute.after` output and
+  `experimental.chat.system.transform` (session start).
+- Goose and Aider have no model-context channel and drop it; see
+  capability-matrix for sources.
 - Proto `Decision.context = 5`; Go/TS/Python/PHP stubs regenerated;
   Python and TS handler `Decision` types gain `context`.
 - Handler contract: documents `context`; default timeout corrected to
