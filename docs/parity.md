@@ -17,7 +17,7 @@ code; upstream behavior is cited where a cell depends on it.
 | claude | `>=1.0.0` / 1.0.18, 1.1.4, 1.2.1 | `nervd` (or `--adapter claude`); stdin JSON | ✓ | ◐ stderr | ✓ PreToolUse, PermissionRequest | ✓ SessionStart, SubagentStart, UserPromptSubmit, PreToolUse, PostToolUse, PostToolUseFailure, Stop, SubagentStop | ✓ Start, End, Stop | none; reference CLI |
 | gemini | no range / 0.3.2, 0.4.1, 0.5.0 | `nervd --adapter gemini`; stdin JSON | ✓ | ✓ `systemMessage` | ? emits `tool_input` | ✓ SessionStart, BeforeAgent, AfterTool | ◐ Start, End native; Stop = SessionEnd | [gemini](#flag-gemini) |
 | codex | `>=0.1.0` / 0.40.0, 0.41.0, 0.42.0 | `nervd --adapter codex`; stdin JSON | ◐ | ◐ stderr | ? claude encoding | ◐ SessionStart, UserPromptSubmit, PreToolUse, PostToolUse | ◐ Start, Stop; no End | [codex](#flag-codex) |
-| opencode | `>=1.19.3 <2.0.0` / 1.19.3 | `nervd --adapter opencode`; bridge plugin | ✓ PreToolUse only | ◐ bridge log | ✗ ignored | ✓ PostToolUse, SessionStart | ✓ Start, End, Stop | ⚠ [opencode](#flag-opencode) |
+| opencode | `>=1.19.3 <2.0.0 \|\| >=2.2.0 <3.0.0` / 1.19.3, 2.2.5 | `nervd --adapter opencode`; bridge plugin | ✓ PreToolUse only | ◐ bridge log | ✗ ignored | ✓ PostToolUse, SessionStart | ✓ Start, End, Stop | ⚠ [opencode](#flag-opencode) |
 | goose | `>=1.55.0` / 1.55.0 | `nervd --adapter goose`; plugin `hooks.json` (`~/.agents/plugins/nerv/hooks/hooks.json`), stdin JSON | ◐ PreToolUse, Stop | ✗ stderr only | ✗ | ✗ no channel | ✓ Start, End, Stop | ⚠ [goose](#flag-goose) |
 | openhands | no range, no pin | `nervd --adapter openhands`; stdin JSON | ⚠ via exit 2 | ◐ `reason` + stderr | ✗ | ◐ SessionStart, UserPromptSubmit | ◐ Start, End; Stop needs core change | ⚠ [openhands](#flag-openhands) |
 
@@ -68,23 +68,44 @@ Adapter: `adapters/openhands/translate.go` `FromEventDecision`.
 - Stop is `close:` in `capabilities.yaml` ("API-ready, needs core loop
   change").
 
-### <a id="flag-opencode"></a>⚠ OpenCode — plugin API v1 only; permissions observation-only; rewrite ignored
+### <a id="flag-opencode"></a>⚠ OpenCode — two plugin APIs (v1, v2); permissions observation-only; rewrite ignored
 
 - Supported: plugin API v1, `>=1.19.3 <2.0.0` (verified against
-  sst/opencode v1.19.3). v2.x uses a different plugin API
-  (`Plugin.define`/`setup`) and does not load v1 plugins: **unsupported**.
-  CI pin is `opencode-ai@1.19.3` only.
+  sst/opencode v1.19.3), and plugin API v2, `>=2.2.0 <3.0.0` (verified
+  against anomalyco/opencode v2.2.5; also run against 2.2.1). v2 does not
+  load v1 plugins (`Plugin.define`/`setup`), so the installer writes the
+  bridge matching `opencode --version` and removes the other one.
+  Unparseable versions and 3.x fail the install. CI pins:
+  `opencode-ai@1.19.3` (npm) and 2.2.5 (GitHub release; v2 is not
+  published to npm under `opencode-ai`).
+- v2 bridge (`adapters/opencode/shim_v2.go`), installed as
+  `.opencode/nerv-bridge/index.ts` plus a `plugins` entry
+  (`./.opencode/nerv-bridge`) in `opencode.json`. Not under
+  `.opencode/plugins/`: that directory is auto-discovered, so a config
+  entry pointing into it makes OpenCode 2.2.5 load the same plugin twice
+  (two "loading plugin" log lines; the loader rejects duplicate ids). Same wire shape and decisions as v1; v2 differences absorbed in
+  the bridge: tool ids `shell`/`subagent` are sent as `bash`/`task`,
+  `path` args also as `filePath`, `todo.updated`/`file.edited`/
+  `session.idle` have no v2 bus event and are derived (todowrite, edit/
+  write/patch completions, `session.execution.*`), and session start is
+  announced from `session.created` or the first model request (the
+  `session.created` event is not delivered to a plugin loaded after the
+  session exists). A failed tool also reports `error` (→
+  `PostToolUseFailure`), which v1 never does.
 - `permission.ask` is declared in `packages/plugin/src/index.ts` but
   never triggered by the runtime (v1.19.3). `PermissionRequest` and
   `PermissionDenied` come from bus events (`permission.asked`,
   `permission.replied` with `reject`) through the plugin `event` hook;
   they observe and cannot allow or deny.
 - Block works only by throwing from `tool.execute.before`
-  (`adapters/opencode/shim.go`).
+  (`adapters/opencode/shim.go`; v2: `ctx.tool.hook("execute.before")`,
+  `shim_v2.go`, the message reaches the model).
 - Rewrite is ignored: the shim logs "rewrite decision ignored".
-- Context: `tool.execute.after` (appended to `output.output`) and
-  `session.created` (via `experimental.chat.system.transform`). No
-  channel on `tool.execute.before` (args only).
+- Context: `tool.execute.after` (appended to `output.output`; v2:
+  appended to `result.content`) and `session.created` (via
+  `experimental.chat.system.transform`; v2: `ctx.session.hook("context")`
+  pushes a text part onto `event.system`). No channel on
+  `tool.execute.before` (args only).
 - No `PreCompact` (only post-compaction `session.compacted`).
   `PostToolUseFailure` is undeclared and renders `-`.
 

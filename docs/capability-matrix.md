@@ -125,6 +125,11 @@ Recurring blockers (lifted from each `capabilities.yaml`'s
   but never triggered by the runtime (v1.19.3), so permission events are
   observation-only. `todo.updated` fires `TaskCompleted` once per newly
   completed todo id. Blocking is `throw` from `tool.execute.before`.
+  On plugin API v2 (OpenCode 2.x) the bridge subscribes with
+  `ctx.event.subscribe()` (`{type, data}`), maps `session.execution.*`
+  to `Stop`/`StopFailure`, `session.compaction.ended` to `PostCompact`,
+  and derives `FileChanged`/`TaskCompleted` from edit/write/patch and
+  todowrite completions; see [parity](parity.md#flag-opencode).
 - **OpenCode `PreCompact`** — OpenCode emits `session.compacted`
   (post-) but no pre-compaction signal.
 - **OpenHands worktree + notifications + config** — the SDK PR

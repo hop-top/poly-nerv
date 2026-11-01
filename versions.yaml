@@ -14,10 +14,19 @@ matrix:
     install: npm
     versions: ["0.40.0", "0.41.0", "0.42.0"]
   opencode:
-    # Plugin API v1 line (v1.x). v2.x ships a different plugin API.
+    # Plugin API v1 line (v1.x). v2.x ships a different plugin API
+    # (see opencode-v2).
     package: "opencode-ai"
     install: npm
     versions: ["1.19.3"]
+  opencode-v2:
+    # Plugin API v2 line (Plugin.define/setup). v2.x is not published to
+    # npm under opencode-ai (latest dist-tag stays on 1.x); GitHub release
+    # binaries (anomalyco/opencode). Same CLI name as opencode; the nerv
+    # installer picks the bridge from `opencode --version`.
+    package: "anomalyco/opencode"
+    install: github-release
+    versions: ["2.2.5"]
   goose:
     # Plugin hooks (hooks/hooks.json) verified at 1.55.0. GitHub release
     # binaries; crates.io goose-cli is an unrelated crate.
