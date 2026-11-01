@@ -15,10 +15,12 @@ reusable workflow (pinned to a release commit SHA).
 - `1.0.0` — first stable
 
 All six components share the same version. release-please's
-`linked-versions` group `nerv` enforces this: whenever one component
-bumps, all six entries in `.release-please-manifest.json` move to the
-same version. `separate-pull-requests` is on, so each component gets its
-own release PR and its own tag.
+`linked-versions` plugin (group `nerv`, declared under `plugins` in
+`release-please-config.json`; a top-level `linked-versions` key is
+ignored) enforces this: whenever one component bumps, all six entries
+in `.release-please-manifest.json` move to the same version. The plugin
+merges the six candidates into one combined release PR; merging it
+creates one tag per component.
 
 ## Components
 
@@ -77,11 +79,11 @@ later than the SDK.
    `.github/workflows/release-please.yml` mints a short-lived token from
    the `hop-top/release-bot` GitHub App and runs
    `googleapis/release-please-action` (v5, SHA-pinned).
-3. release-please opens (or updates) a single PR titled
-   `chore(release):<component> <version>` per component when a bump is
-   warranted. Because the group is linked, all six PRs land together
-   when one component bumps — review and merge as one set.
-4. Merging the release PR(s) creates six tags:
+3. release-please opens (or updates) a single combined PR
+   (`chore(<branch>): release nerv libraries`) covering all six
+   components when a bump is warranted. It also rewrites the
+   `hop.top/nerv` require in `sdk/go/go.mod` to the release version.
+4. Merging the release PR creates six tags:
    `nerv/v<version>`, `nerv-go/v<version>`, `nerv-ts/v<version>`, …, `nerv-php/v<version>`.
 5. Each `*/v*` tag triggers `.github/workflows/publish.yml`, which calls
    `hop-top/.github/.github/workflows/publish-on-tag.yml` (SHA-pinned) with the
