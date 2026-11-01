@@ -1,5 +1,15 @@
 # Last 3 minor versions per CLI. Update when new minors ship.
-# Used by CI conformance matrix + docker-compose.test.yaml.
+# Single source of truth for the CLIs under test. Read by:
+#   - .github/workflows/conformance-record.yaml (matrix generated from it)
+#   - scripts/install-cli.sh (CI + docker/Dockerfile.test installs)
+#   - docker/docker-compose.test.yaml (build args)
+# Guarded by adapters/record_matrix_test.go.
+#
+# Keys: package, install (npm|go|pip|github-release), versions, and
+# `adapter` when the key differs from the adapter name (default: key).
+# github-release entries also carry `release`: asset template ({arch} is
+# the mapped uname -m value), arch map, tar member, binary name, and a
+# sha256 per version per uname -m arch. Bump version and sums together.
 matrix:
   claude:
     package: "@anthropic-ai/claude-code"
@@ -26,10 +36,34 @@ matrix:
     # installer picks the bridge from `opencode --version`.
     package: "anomalyco/opencode"
     install: github-release
+    adapter: opencode
     versions: ["2.2.5"]
+    release:
+      asset: "opencode-linux-{arch}.tar.gz"
+      arch: { x86_64: x64, aarch64: arm64 }
+      member: opencode
+      binary: opencode
+      sha256:  # anomalyco/opencode SHA256SUMS
+        "2.2.5":
+          x86_64: 09f44302c10fd036912f59c81fd1aef5df45dd06f649197f9dfc9bbe2a79614e
+          aarch64: 5a528f42caf576c6cdece6a191eb273d3db54effa5518e0402684d8f8026aeb6
   goose:
     # Plugin hooks (hooks/hooks.json) verified at 1.55.0. GitHub release
     # binaries; crates.io goose-cli is an unrelated crate.
     package: "aaif-goose/goose"
     install: github-release
     versions: ["1.55.0"]
+    release:
+      asset: "goose-{arch}-unknown-linux-gnu.tar.gz"
+      arch: { x86_64: x86_64, aarch64: aarch64 }
+      member: ./goose
+      binary: goose
+      sha256:  # release asset digests
+        "1.55.0":
+          x86_64: fd3932908328fac850ca7ad2a8289c744e0c2ddaf4c5a2338709fb17a00b3a4c
+          aarch64: ea83f59bb165a3d999dd00edf69a58028747f31e404b96f0153452c6b1651188
+  openhands:
+    # PyPI CLI; requires Python 3.12.
+    package: "openhands"
+    install: pip
+    versions: ["1.16.0"]
