@@ -186,7 +186,7 @@ func TestCheckDaemon(t *testing.T) {
 	if err != nil {
 		t.Skipf("unix listen unavailable: %v", err)
 	}
-	defer ln.Close()
+	defer func() { _ = ln.Close() }()
 	go func() {
 		for {
 			c, err := ln.Accept()
