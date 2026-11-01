@@ -162,25 +162,35 @@ type ohHook struct {
 	Timeout int    `json:"timeout,omitempty"`
 }
 
-// mergeNervEntry ensures a nerv hook entry exists without duplicating.
-func mergeNervEntry(entries []ohHookEntry) []ohHookEntry {
-	nervHook := ohHook{
-		Type:    "command",
-		Command: "nervd",
-		Timeout: 30000,
-	}
+// nervCommand is the hook command written for OpenHands. --adapter
+// makes nervd answer in OpenHands' dialect (incl. decision context).
+const nervCommand = "nervd --adapter openhands"
 
-	// Check if nervd already registered.
-	for _, entry := range entries {
-		for _, h := range entry.Hooks {
-			if h.Command == "nervd" {
-				return entries
+// mergeNervEntry ensures a nerv hook entry exists without duplicating.
+// A legacy bare "nervd" entry is upgraded in place to nervCommand.
+func mergeNervEntry(entries []ohHookEntry) []ohHookEntry {
+	found := false
+	for i := range entries {
+		for j := range entries[i].Hooks {
+			switch entries[i].Hooks[j].Command {
+			case nervCommand:
+				found = true
+			case "nervd":
+				entries[i].Hooks[j].Command = nervCommand
+				found = true
 			}
 		}
+	}
+	if found {
+		return entries
 	}
 
 	return append(entries, ohHookEntry{
 		Matcher: ".*",
-		Hooks:   []ohHook{nervHook},
+		Hooks: []ohHook{{
+			Type:    "command",
+			Command: nervCommand,
+			Timeout: 30000,
+		}},
 	})
 }

@@ -102,6 +102,12 @@ func run() int {
 	flag.Parse()
 	startPprof()
 
+	route, err := lookupAdapter(*adapterFlag)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "nervd: %v\n", err)
+		return 2
+	}
+
 	// Resolve aps active profile up-front so later config compilation
 	// (builtins.Inject) sees a populated ActiveProfile field.
 	profile := initActiveProfile(os.Stderr)
@@ -146,7 +152,7 @@ func run() int {
 		return 0
 	}
 
-	return runStateless(dispatcher)
+	return runStateless(dispatcher, route)
 }
 
 // runStateless is the stdin→stdout single-shot mode. Input is either a
@@ -154,26 +160,39 @@ func run() int {
 // stdin carries hook_event_name JSON) or a nerv envelope (adapters).
 // The response dialect follows the input dialect. Returns the process
 // exit code.
-func runStateless(d *dispatch.Dispatcher) int {
-	raw, err := io.ReadAll(io.LimitReader(os.Stdin, envelope.HardMaxEnvelopeSize+1))
+//
+// route, when non-nil (--adapter), replaces sniffing: input decodes and
+// the decision encodes through that host CLI's translator, with the
+// native event name passed to the encoder.
+func runStateless(d *dispatch.Dispatcher, route *adapterRoute) int {
+	return runStatelessIO(d, route, os.Stdin, os.Stdout, os.Stderr)
+}
+
+// runStatelessIO is runStateless over explicit streams (testable).
+func runStatelessIO(d *dispatch.Dispatcher, route *adapterRoute, in io.Reader, out, errw io.Writer) int {
+	raw, err := io.ReadAll(io.LimitReader(in, envelope.HardMaxEnvelopeSize+1))
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "nervd: failed to read stdin: %v\n", err)
+		fmt.Fprintf(errw, "nervd: failed to read stdin: %v\n", err)
 		return 1
 	}
 	if int64(len(raw)) > envelope.HardMaxEnvelopeSize {
-		fmt.Fprintf(os.Stderr, "nervd: input exceeds %d bytes\n", envelope.HardMaxEnvelopeSize)
+		fmt.Fprintf(errw, "nervd: input exceeds %d bytes\n", envelope.HardMaxEnvelopeSize)
 		return 1
+	}
+
+	if route != nil {
+		return runAdapter(d, route, raw, out, errw)
 	}
 
 	env, claudeEvent, err := decodeStateless(raw)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "nervd: failed to read event: %v\n", err)
+		fmt.Fprintf(errw, "nervd: failed to read event: %v\n", err)
 		return 1
 	}
 
 	res, err := d.Dispatch(env)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "nervd: dispatch error: %v\n", err)
+		fmt.Fprintf(errw, "nervd: dispatch error: %v\n", err)
 		if claudeEvent != "" {
 			return 0 // fail-open: never wedge the calling CLI
 		}
@@ -181,14 +200,32 @@ func runStateless(d *dispatch.Dispatcher) int {
 	}
 
 	if claudeEvent != "" {
-		return respondClaude(os.Stdout, os.Stderr, claudeEvent, res.Decision)
+		return respondClaude(out, errw, claudeEvent, res.Decision)
 	}
 
-	if err := json.NewEncoder(os.Stdout).Encode(res.Decision); err != nil {
-		fmt.Fprintf(os.Stderr, "nervd: failed to write decision: %v\n", err)
+	if err := json.NewEncoder(out).Encode(res.Decision); err != nil {
+		fmt.Fprintf(errw, "nervd: failed to write decision: %v\n", err)
 		return 1
 	}
 	return 0
+}
+
+// runAdapter is the --adapter path of runStateless. Dispatch failures
+// fail open with an allow decision in the host's dialect so a nerv bug
+// never wedges the calling CLI.
+func runAdapter(d *dispatch.Dispatcher, route *adapterRoute, raw []byte, out, errw io.Writer) int {
+	env, event, err := route.decode(raw)
+	if err != nil {
+		fmt.Fprintf(errw, "nervd: failed to read event: %v\n", err)
+		return 1
+	}
+	res, err := d.Dispatch(env)
+	if err != nil {
+		fmt.Fprintf(errw, "nervd: dispatch error: %v\n", err)
+		return respondAdapter(out, errw, route, event,
+			merger.Decision{Action: merger.Allow})
+	}
+	return respondAdapter(out, errw, route, event, res.Decision)
 }
 
 // decodeStateless sniffs raw input: Claude-native hook JSON (marked by

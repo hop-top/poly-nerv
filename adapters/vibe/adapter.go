@@ -64,9 +64,11 @@ func (a *Adapter) ConfigPaths() []string {
 func (a *Adapter) MergeConfig(existing []byte) ([]byte, error) {
 	content := string(existing)
 
-	// If the config already has nerv handlers, return as-is.
+	// If the config already has nerv handlers, return as-is, upgrading
+	// legacy bare "nervd" commands to the adapter-routed command.
 	if strings.Contains(content, "nervd") {
-		return existing, nil
+		return []byte(strings.ReplaceAll(content,
+			`command = "nervd"`, fmt.Sprintf("command = %q", nervCommand))), nil
 	}
 
 	// Build the hooks section with handlers for each native event.
@@ -110,6 +112,10 @@ func configPaths() []string {
 	return paths
 }
 
+// nervCommand is the hook command written for Vibe. --adapter makes
+// nervd answer in Vibe's dialect (incl. decision context).
+const nervCommand = "nervd --adapter vibe"
+
 // vibeHooksSection returns a full [hooks] TOML block.
 func vibeHooksSection() string {
 	return "[hooks]\nenabled = true\n" + vibeHandlersOnly()
@@ -131,7 +137,7 @@ func vibeHandlersOnly() string {
 		fmt.Fprintf(&b, "\n[[hooks.handlers]]\n")
 		fmt.Fprintf(&b, "event = %q\n", ev)
 		fmt.Fprintf(&b, "type = \"command\"\n")
-		fmt.Fprintf(&b, "command = \"nervd\"\n")
+		fmt.Fprintf(&b, "command = %q\n", nervCommand)
 		fmt.Fprintf(&b, "timeout = 30000\n")
 	}
 	return b.String()
