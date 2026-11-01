@@ -115,13 +115,20 @@ Adapter: `adapters/openhands/translate.go` `FromEventDecision`.
   anything but a decision on stdout lets the tool call proceed
   (`on_failure` defaults to `allow`); the installer does not set
   `on_failure: block`.
-- Not live: `capabilities.yaml` still lists SSE-derived events
-  (Notification, PostCompact, PermissionRequest, subagent and task events,
-  StopFailure) and shell-matched synthesized events (CwdChanged,
-  Worktree*, PreCompact, InstructionsLoaded, TaskCreated). Goose hooks do
-  not emit them and no bridge produces them; the matrix cells for those
-  remain declarations, not delivery. Goose also never emits
-  `SubagentStart`/`SubagentStop` hooks.
+- Coverage is 8/26, all native plugin hooks: SessionStart, SessionEnd,
+  Stop, UserPromptSubmit, PreToolUse, PostToolUse, PostToolUseFailure,
+  AfterFileEdit (as FileChanged). Not delivered, and listed `unsupported`
+  in `capabilities.yaml`: StopFailure, PermissionRequest, PermissionDenied,
+  Notification, SubagentStart, SubagentStop (Goose never emits subagent
+  hooks), TeammateIdle, TaskCreated, TaskCompleted, InstructionsLoaded,
+  ConfigChange, CwdChanged, PreCompact, PostCompact, WorktreeCreate,
+  WorktreeRemove, Elicitation, ElicitationResult. No synthesized events:
+  nothing turns a delivered hook into one.
+- Goose hook events deliberately unmapped (`hooks.md` "Supported Events",
+  `crates/goose/src/hooks/mod.rs` `HookEvent`): PreToolUseResult
+  (observation of the PreToolUse outcome), BeforeReadFile (no nerv event),
+  BeforeShellExecution and AfterShellExecution (duplicate the tool events;
+  mapping them to CwdChanged/Worktree* needs shell-command parsing).
 - Tool names are Goose's (`shell`, `write`, `edit`), not Claude's;
   handler `match` patterns must use them.
 - An earlier install left a `nerv-bridge` entry in

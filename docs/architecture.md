@@ -66,9 +66,9 @@ synthesized / - uncovered, 6 adapters × 26 events). Quick summary:
 | Claude Code | 26 | 0 | 26/26 |
 | Gemini CLI | 8 | 16 | 24/26 |
 | OpenCode | 10 | 13 | 23/26 |
-| Goose | 11 | 11 | 22/26 |
 | OpenHands | 5 | 15 | 20/26 |
 | Codex CLI | 3 | 12 | 15/26 |
+| Goose | 8 | 0 | 8/26 |
 
 Each adapter implements `adapters/internal/adapter.go`:
 

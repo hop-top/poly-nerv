@@ -22,9 +22,9 @@ appendix.
 | claude    | 26     | 0           | 0         | 26/26 (100%) |
 | gemini    | 8      | 16          | 2         | 24/26 (92%) |
 | opencode  | 10     | 13          | 3         | 23/26 (88%) |
-| goose     | 16     | 6           | 4         | 22/26 (85%) |
 | openhands | 5      | 15          | 6         | 20/26 (77%) |
 | codex     | 3      | 12          | 11        | 15/26 (58%) |
+| goose     | 8      | 0           | 18        | 8/26 (31%) |
 
 Native count = events listed under `native:` in each
 `capabilities.yaml`. Synthesized = events listed under `synthesized:`
@@ -38,45 +38,45 @@ Rows grouped by category (per
 [`.agents/references/event-catalog.md`](../.agents/references/event-catalog.md)).
 Columns ordered by coverage, most → least.
 
-| Event                | claude | gemini | opencode | goose | openhands | codex |
-|----------------------|:------:|:------:|:--------:|:-----:|:---------:|:-----:|
-| **session**          |        |        |          |       |           |       |
-| SessionStart         |   ✓    |   ✓    |    ✓     |   ✓   |     ✓     |   ✓   |
-| SessionEnd           |   ✓    |   ✓    |    ✓     |   ✓   |     ✓     |   -   |
-| Stop                 |   ✓    |   ~    |    ✓     |   ✓   |     ~     |   ✓   |
-| StopFailure          |   ✓    |   -    |    ✓     |   ✓   |     ~     |   -   |
-| **prompt**           |        |        |          |       |           |       |
-| UserPromptSubmit     |   ✓    |   ~    |    ~     |   ✓   |     ✓     |   ✓   |
-| **tool**             |        |        |          |       |           |       |
-| PreToolUse           |   ✓    |   ✓    |    ✓     |   ✓   |     ✓     |   ~   |
-| PostToolUse          |   ✓    |   ✓    |    ✓     |   ✓   |     ✓     |   ~   |
-| PostToolUseFailure   |   ✓    |   ~    |    -     |   ✓   |     ~     |   ~   |
-| **permission**       |        |        |          |       |           |       |
-| PermissionRequest    |   ✓    |   ~    |    ✓     |   ✓   |     -     |   ~   |
-| PermissionDenied     |   ✓    |   ~    |    ✓     |   ✓   |     ~     |   ~   |
-| **notification**     |        |        |          |       |           |       |
-| Notification         |   ✓    |   ✓    |    ~     |   ✓   |     -     |   ~   |
-| **agent**            |        |        |          |       |           |       |
-| SubagentStart        |   ✓    |   ✓    |    ~     |   ✓   |     ~     |   -   |
-| SubagentStop         |   ✓    |   ✓    |    ~     |   ✓   |     ~     |   -   |
-| TeammateIdle         |   ✓    |   -    |    -     |   -   |     -     |   -   |
-| **task**             |        |        |          |       |           |       |
-| TaskCreated          |   ✓    |   ~    |    ~     |   ~   |     ~     |   -   |
-| TaskCompleted        |   ✓    |   ~    |    ~     |   ✓   |     ~     |   -   |
-| **context**          |        |        |          |       |           |       |
-| InstructionsLoaded   |   ✓    |   ~    |    ~     |   ~   |     ~     |   ~   |
-| ConfigChange         |   ✓    |   ~    |    ~     |   -   |     -     |   ~   |
-| CwdChanged           |   ✓    |   ~    |    ~     |   ~   |     ~     |   ~   |
-| PreCompact           |   ✓    |   ✓    |    -     |   ~   |     ~     |   -   |
-| PostCompact          |   ✓    |   ~    |    ✓     |   ✓   |     ~     |   -   |
-| **file**             |        |        |          |       |           |       |
-| FileChanged          |   ✓    |   ~    |    ✓     |   ✓   |     ~     |   ~   |
-| **worktree**         |        |        |          |       |           |       |
-| WorktreeCreate       |   ✓    |   ~    |    ~     |   ~   |     -     |   ~   |
-| WorktreeRemove       |   ✓    |   ~    |    ~     |   ~   |     -     |   ~   |
-| **mcp**              |        |        |          |       |           |       |
-| Elicitation          |   ✓    |   ~    |    ~     |   -   |     ~     |   -   |
-| ElicitationResult    |   ✓    |   ~    |    ~     |   -   |     ~     |   -   |
+| Event                | claude | gemini | opencode | openhands | codex | goose |
+|----------------------|:------:|:------:|:--------:|:---------:|:-----:|:-----:|
+| **session**          |        |        |          |           |       |       |
+| SessionStart         |   ✓    |   ✓    |    ✓     |     ✓     |   ✓   |   ✓   |
+| SessionEnd           |   ✓    |   ✓    |    ✓     |     ✓     |   -   |   ✓   |
+| Stop                 |   ✓    |   ~    |    ✓     |     ~     |   ✓   |   ✓   |
+| StopFailure          |   ✓    |   -    |    ✓     |     ~     |   -   |   -   |
+| **prompt**           |        |        |          |           |       |       |
+| UserPromptSubmit     |   ✓    |   ~    |    ~     |     ✓     |   ✓   |   ✓   |
+| **tool**             |        |        |          |           |       |       |
+| PreToolUse           |   ✓    |   ✓    |    ✓     |     ✓     |   ~   |   ✓   |
+| PostToolUse          |   ✓    |   ✓    |    ✓     |     ✓     |   ~   |   ✓   |
+| PostToolUseFailure   |   ✓    |   ~    |    -     |     ~     |   ~   |   ✓   |
+| **permission**       |        |        |          |           |       |       |
+| PermissionRequest    |   ✓    |   ~    |    ✓     |     -     |   ~   |   -   |
+| PermissionDenied     |   ✓    |   ~    |    ✓     |     ~     |   ~   |   -   |
+| **notification**     |        |        |          |           |       |       |
+| Notification         |   ✓    |   ✓    |    ~     |     -     |   ~   |   -   |
+| **agent**            |        |        |          |           |       |       |
+| SubagentStart        |   ✓    |   ✓    |    ~     |     ~     |   -   |   -   |
+| SubagentStop         |   ✓    |   ✓    |    ~     |     ~     |   -   |   -   |
+| TeammateIdle         |   ✓    |   -    |    -     |     -     |   -   |   -   |
+| **task**             |        |        |          |           |       |       |
+| TaskCreated          |   ✓    |   ~    |    ~     |     ~     |   -   |   -   |
+| TaskCompleted        |   ✓    |   ~    |    ~     |     ~     |   -   |   -   |
+| **context**          |        |        |          |           |       |       |
+| InstructionsLoaded   |   ✓    |   ~    |    ~     |     ~     |   ~   |   -   |
+| ConfigChange         |   ✓    |   ~    |    ~     |     -     |   ~   |   -   |
+| CwdChanged           |   ✓    |   ~    |    ~     |     ~     |   ~   |   -   |
+| PreCompact           |   ✓    |   ✓    |    -     |     ~     |   -   |   -   |
+| PostCompact          |   ✓    |   ~    |    ✓     |     ~     |   -   |   -   |
+| **file**             |        |        |          |           |       |       |
+| FileChanged          |   ✓    |   ~    |    ✓     |     ~     |   ~   |   ✓   |
+| **worktree**         |        |        |          |           |       |       |
+| WorktreeCreate       |   ✓    |   ~    |    ~     |     -     |   ~   |   -   |
+| WorktreeRemove       |   ✓    |   ~    |    ~     |     -     |   ~   |   -   |
+| **mcp**              |        |        |          |           |       |       |
+| Elicitation          |   ✓    |   ~    |    ~     |     ~     |   -   |   -   |
+| ElicitationResult    |   ✓    |   ~    |    ~     |     ~     |   -   |   -   |
 
 Legend: `✓` native | `~` synthesized (derived from another signal,
 including `close:` semantic-mismatch mappings) | `-` not covered.
@@ -104,6 +104,12 @@ Recurring blockers (lifted from each `capabilities.yaml`'s
 
 - **`TeammateIdle`** — Claude-only multi-agent primitive. Every
   other CLI has no equivalent of an agent-team peer going idle.
+- **Goose's gap (18 uncovered).** Goose delivers 8 plugin hooks
+  (`SessionStart`, `SessionEnd`, `Stop`, `UserPromptSubmit`, `PreToolUse`,
+  `PostToolUse`, `PostToolUseFailure`, `AfterFileEdit` as `FileChanged`).
+  Its hook list has no permission, notification, subagent, task,
+  compaction, cwd, worktree, instruction or MCP events, and nerv installs
+  no other route. See [parity](parity.md#flag-goose).
 - **Codex CLI's gap (11 uncovered).** Codex exposes 3 native hooks
   (`SessionStart`, `UserPromptSubmit`, `Stop`). Anything subagent-,
   task-, compaction-, or MCP-shaped requires features Codex doesn't
