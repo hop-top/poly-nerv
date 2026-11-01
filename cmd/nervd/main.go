@@ -172,11 +172,11 @@ func runStateless(d *dispatch.Dispatcher, route *adapterRoute) int {
 func runStatelessIO(d *dispatch.Dispatcher, route *adapterRoute, in io.Reader, out, errw io.Writer) int {
 	raw, err := io.ReadAll(io.LimitReader(in, envelope.HardMaxEnvelopeSize+1))
 	if err != nil {
-		fmt.Fprintf(errw, "nervd: failed to read stdin: %v\n", err)
+		_, _ = fmt.Fprintf(errw, "nervd: failed to read stdin: %v\n", err)
 		return 1
 	}
 	if int64(len(raw)) > envelope.HardMaxEnvelopeSize {
-		fmt.Fprintf(errw, "nervd: input exceeds %d bytes\n", envelope.HardMaxEnvelopeSize)
+		_, _ = fmt.Fprintf(errw, "nervd: input exceeds %d bytes\n", envelope.HardMaxEnvelopeSize)
 		return 1
 	}
 
@@ -186,13 +186,13 @@ func runStatelessIO(d *dispatch.Dispatcher, route *adapterRoute, in io.Reader, o
 
 	env, claudeEvent, err := decodeStateless(raw)
 	if err != nil {
-		fmt.Fprintf(errw, "nervd: failed to read event: %v\n", err)
+		_, _ = fmt.Fprintf(errw, "nervd: failed to read event: %v\n", err)
 		return 1
 	}
 
 	res, err := d.Dispatch(env)
 	if err != nil {
-		fmt.Fprintf(errw, "nervd: dispatch error: %v\n", err)
+		_, _ = fmt.Fprintf(errw, "nervd: dispatch error: %v\n", err)
 		if claudeEvent != "" {
 			return 0 // fail-open: never wedge the calling CLI
 		}
@@ -204,7 +204,7 @@ func runStatelessIO(d *dispatch.Dispatcher, route *adapterRoute, in io.Reader, o
 	}
 
 	if err := json.NewEncoder(out).Encode(res.Decision); err != nil {
-		fmt.Fprintf(errw, "nervd: failed to write decision: %v\n", err)
+		_, _ = fmt.Fprintf(errw, "nervd: failed to write decision: %v\n", err)
 		return 1
 	}
 	return 0
@@ -216,12 +216,12 @@ func runStatelessIO(d *dispatch.Dispatcher, route *adapterRoute, in io.Reader, o
 func runAdapter(d *dispatch.Dispatcher, route *adapterRoute, raw []byte, out, errw io.Writer) int {
 	env, event, err := route.decode(raw)
 	if err != nil {
-		fmt.Fprintf(errw, "nervd: failed to read event: %v\n", err)
+		_, _ = fmt.Fprintf(errw, "nervd: failed to read event: %v\n", err)
 		return 1
 	}
 	res, err := d.Dispatch(env)
 	if err != nil {
-		fmt.Fprintf(errw, "nervd: dispatch error: %v\n", err)
+		_, _ = fmt.Fprintf(errw, "nervd: dispatch error: %v\n", err)
 		return respondAdapter(out, errw, route, event,
 			merger.Decision{Action: merger.Allow})
 	}
