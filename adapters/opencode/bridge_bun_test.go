@@ -200,3 +200,99 @@ func mustRead(t *testing.T, p string) []byte {
 	}
 	return b
 }
+
+// runBun renders plugin src plus driver into a temp dir with a stub nervd
+// whose body is stubCase (a sh `case "$in" in ... esac` arm list), runs the
+// driver under bun and returns its last JSON line.
+func runBun(t *testing.T, gen func(string) (string, error), stubCase, driver string) map[string]any {
+	t.Helper()
+	bun, err := exec.LookPath("bun")
+	if err != nil {
+		t.Skip("bun not installed")
+	}
+	dir := t.TempDir()
+	stub := filepath.Join(dir, "nervd")
+	stubSrc := "#!/bin/sh\nin=$(cat)\necho \"$in\" >> \"" + dir + "/stdin.log\"\ncase \"$in\" in\n" +
+		stubCase + "\n  *) echo '{\"action\":\"allow\"}';;\nesac\n"
+	if err := os.WriteFile(stub, []byte(stubSrc), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	src, err := gen(stub)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "plugin.ts"), []byte(src), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "driver.ts"), []byte(driver), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	cmd := exec.Command(bun, "run", "driver.ts")
+	cmd.Dir = dir
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("bun: %v\n%s", err, out)
+	}
+	t.Logf("bun output: %s", out)
+	lines := strings.Split(strings.TrimSpace(string(out)), "\n")
+	var got map[string]any
+	if err := json.Unmarshal([]byte(lines[len(lines)-1]), &got); err != nil {
+		t.Fatalf("parse %q: %v", out, err)
+	}
+	return got
+}
+
+// A rewrite decision on tool.execute.before replaces the args object the
+// tool will run with, in place; v1 does not rename args, so the rewrite is
+// applied verbatim. Rewrite on any other event is ignored with a warning.
+func TestBridgePlugin_Rewrite(t *testing.T) {
+	stubCase := `  *'"command":"ls"'*) echo '{"action":"rewrite","message":"w","rewrite":{"command":"echo rewritten","description":"d"}}';;
+  *'"command":"pathy"'*) echo '{"action":"rewrite","rewrite":{"filePath":"/new","path":"/p","keep":1}}';;
+  *'"command":"bad"'*) echo '{"action":"rewrite","rewrite":"nope"}';;
+  *'"command":"empty"'*) echo '{"action":"rewrite"}';;
+  *tool.execute.after*) echo '{"action":"rewrite","rewrite":{"x":1}}';;`
+	driver := `import plugin from "./plugin.ts";
+const h: any = (plugin as any)({});
+const warns: string[] = [];
+console.warn = (...a: any[]) => { warns.push(a.join(" ")); };
+
+const args: any = { command: "ls", timeout: 5, extra: true };
+const ref = args;
+await h["tool.execute.before"]({ tool: "bash", sessionID: "s" }, { args });
+
+const pathy: any = { command: "pathy", filePath: "/old" };
+await h["tool.execute.before"]({ tool: "write", sessionID: "s" }, { args: pathy });
+
+const bad: any = { command: "bad" };
+await h["tool.execute.before"]({ tool: "bash", sessionID: "s" }, { args: bad });
+const empty: any = { command: "empty" };
+await h["tool.execute.before"]({ tool: "bash", sessionID: "s" }, { args: empty });
+
+const afterArgs: any = { command: "zzz" };
+const out = { output: "o" };
+await h["tool.execute.after"]({ tool: "bash", sessionID: "s", args: afterArgs }, out);
+
+console.log(JSON.stringify({ args, same: ref === args, pathy, bad, empty, afterArgs, out, warns }));
+`
+	got := runBun(t, GeneratePlugin, stubCase, driver)
+	eq := func(name string, v any, want string) {
+		t.Helper()
+		b, _ := json.Marshal(v)
+		if string(b) != want {
+			t.Errorf("%s = %s, want %s", name, b, want)
+		}
+	}
+	eq("args", got["args"], `{"command":"echo rewritten","description":"d"}`)
+	eq("same ref", got["same"], `true`)
+	eq("pathy (v1: no key mapping)", got["pathy"], `{"filePath":"/new","keep":1,"path":"/p"}`)
+	eq("bad (non-object rewrite ignored)", got["bad"], `{"command":"bad"}`)
+	eq("empty (no payload ignored)", got["empty"], `{"command":"empty"}`)
+	eq("afterArgs", got["afterArgs"], `{"command":"zzz"}`)
+	eq("after out", got["out"], `{"output":"o"}`)
+	warns, _ := json.Marshal(got["warns"])
+	for _, w := range []string{"warning: w", "rewrite decision ignored (needs an object", "only tool.execute.before supports rewrite"} {
+		if !strings.Contains(string(warns), w) {
+			t.Errorf("missing warning %q in %s", w, warns)
+		}
+	}
+}

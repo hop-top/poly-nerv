@@ -208,3 +208,22 @@ func TestToEnvelope_BridgeWireShapes(t *testing.T) {
 		})
 	}
 }
+
+// A merged rewrite on tool.execute.before reaches the bridge intact:
+// nested objects survive, and context is not attached (no channel).
+func TestFromEventDecision_RewriteBefore(t *testing.T) {
+	d := merger.Decision{
+		Action:  merger.Rewrite,
+		Message: "w",
+		Rewrite: map[string]any{"command": "ls", "opts": map[string]any{"a": 1}},
+		Context: "ctx",
+	}
+	b, err := FromEventDecision(d, OCToolExecBefore)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := `{"action":"rewrite","message":"w","rewrite":{"command":"ls","opts":{"a":1}}}`
+	if string(b) != want {
+		t.Errorf("got %s, want %s", b, want)
+	}
+}
