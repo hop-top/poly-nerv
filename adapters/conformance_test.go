@@ -17,6 +17,7 @@ import (
 
 	"gopkg.in/yaml.v3"
 
+	"hop.top/nerv/adapters"
 	"hop.top/nerv/adapters/claude"
 	"hop.top/nerv/adapters/codex"
 	"hop.top/nerv/adapters/gemini"
@@ -37,7 +38,53 @@ type adapterEntry struct {
 	translateInputs [][]byte
 }
 
+// allAdapters returns the table of adapters under test, narrowed to
+// the one named by NERV_CONFORMANCE_CLI when set. An empty or unknown
+// value fails the test instead of silently running nothing.
 func allAdapters(t *testing.T) []adapterEntry {
+	t.Helper()
+	all := buildAdapters(t)
+
+	names := make([]string, 0, len(all))
+	for _, ae := range all {
+		names = append(names, ae.name)
+	}
+	val, set := os.LookupEnv(cliFilterEnv)
+	cli, err := resolveCLIFilter(val, set, names)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cli == "" {
+		return all
+	}
+	for _, ae := range all {
+		if ae.name == cli {
+			return []adapterEntry{ae}
+		}
+	}
+	t.Fatalf("filter %q matched no adapter", cli)
+	return nil
+}
+
+// TestConformance_TableMatchesRegistry fails when the table above and
+// the adapter registry diverge, so no adapter escapes conformance.
+func TestConformance_TableMatchesRegistry(t *testing.T) {
+	got := map[string]bool{}
+	for _, ae := range buildAdapters(t) {
+		got[ae.name] = true
+	}
+	for name := range adapters.Registry() {
+		if !got[name] {
+			t.Errorf("registered adapter %q not in conformance table", name)
+		}
+		delete(got, name)
+	}
+	for name := range got {
+		t.Errorf("conformance table entry %q not registered", name)
+	}
+}
+
+func buildAdapters(t *testing.T) []adapterEntry {
 	t.Helper()
 	home := t.TempDir()
 
