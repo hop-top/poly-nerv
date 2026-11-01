@@ -4,6 +4,7 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -12,6 +13,8 @@ import (
 
 	"hop.top/nerv/internal/config"
 	"hop.top/nerv/internal/dispatch"
+	"hop.top/nerv/internal/envelope"
+	"hop.top/nerv/internal/eventlog"
 )
 
 // ctxDispatcher returns a dispatcher whose single hook on nerv event
@@ -138,4 +141,46 @@ func TestNervdBinary_UnknownAdapter(t *testing.T) {
 	if !strings.Contains(stderr.String(), `unknown adapter "bogus"`) || stdout.Len() != 0 {
 		t.Fatalf("stderr %q stdout %q", stderr.String(), stdout.String())
 	}
+}
+
+type failLog struct{}
+
+func (failLog) Write(*envelope.Envelope, interface{}) error { return errors.New("disk full") }
+func (failLog) Query(eventlog.Filter) ([]eventlog.Entry, error) {
+	return nil, nil
+}
+
+func blockDispatcherFailingLog(t *testing.T) *dispatch.Dispatcher {
+	t.Helper()
+	script := filepath.Join(t.TempDir(), "b.sh")
+	src := "#!/bin/sh\ncat >/dev/null\necho '{\"action\":\"block\",\"message\":\"no\"}'\nexit 2\n"
+	if err := os.WriteFile(script, []byte(src), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	cc := config.Compile(&config.HooksConfig{Hooks: []config.HookEntry{
+		{Name: "b", On: "PreToolUse", Run: script},
+	}})
+	return dispatch.New(cc, failLog{}, dispatch.NewMatcher(), dispatch.NewRunner())
+}
+
+// Event-log failure must not turn a block into allow, on the claude
+// stateless path or an --adapter route.
+func TestLogFailure_BlockSurvives(t *testing.T) {
+	t.Run("claude", func(t *testing.T) {
+		var out, errw bytes.Buffer
+		code := runStatelessIO(blockDispatcherFailingLog(t), nil,
+			strings.NewReader(`{"hook_event_name":"PreToolUse","session_id":"s1"}`), &out, &errw)
+		if code != 2 {
+			t.Fatalf("exit = %d, want 2; out %q err %q", code, out.String(), errw.String())
+		}
+	})
+	t.Run("gemini", func(t *testing.T) {
+		route, _ := lookupAdapter("gemini")
+		var out, errw bytes.Buffer
+		code := runStatelessIO(blockDispatcherFailingLog(t), route,
+			strings.NewReader(`{"hook_event_name":"BeforeTool","session_id":"s1"}`), &out, &errw)
+		if code != 2 || !strings.Contains(out.String(), `"decision":"deny"`) {
+			t.Fatalf("exit %d out %q err %q", code, out.String(), errw.String())
+		}
+	})
 }
