@@ -1,6 +1,10 @@
 # OpenCode adapter capability map for nerv.
 # Source: docs/research/opencode.md + docs/research/mappings.md
 cli: opencode
+# OpenCode plugin API v1 (default-exported plugin function; bus events via
+# the "event" hook). Verified against sst/opencode v1.19.3. Release line
+# v2.x uses a different plugin API (Plugin.define/setup) and is not covered.
+cli_version_range: ">=1.19.3 <2.0.0"
 
 native:
   - source: session.created
@@ -24,6 +28,7 @@ native:
     target: PermissionRequest
   - source: permission.replied
     target: PermissionDenied
+    # bridge sends decision "deny" for reply "reject" (once/always are skipped)
     filter: "replied.decision == 'deny'"
 
 close:

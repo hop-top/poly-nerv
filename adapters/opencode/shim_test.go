@@ -29,8 +29,7 @@ func TestGeneratePlugin_Contains(t *testing.T) {
 		`"tui.prompt.append"`,
 		`"todo.updated"`,
 		`handleBlocking({`,
-		`handlePassive(event)`,
-		`dispatch(event)`,
+		`mapBusEvent(`,
 		`throw new Error`,
 		`export default`,
 	}
@@ -38,6 +37,19 @@ func TestGeneratePlugin_Contains(t *testing.T) {
 	for _, s := range required {
 		if !strings.Contains(src, s) {
 			t.Errorf("output missing %q", s)
+		}
+	}
+
+	// Bus events are not top-level plugin keys in OpenCode plugin API
+	// v1; they must only be routed through the event hook.
+	for _, k := range []string{
+		"session.created", "session.deleted", "session.idle",
+		"session.error", "session.compacted", "file.edited",
+		"permission.asked", "permission.replied", "tui.prompt.append",
+		"todo.updated",
+	} {
+		if strings.Contains(src, `"`+k+`": async`) {
+			t.Errorf("dead top-level hook key %q", k)
 		}
 	}
 }

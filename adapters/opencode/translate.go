@@ -138,7 +138,7 @@ type DecisionJSON struct {
 // prompt via experimental.chat.system.transform). tool.execute.before
 // only exposes args; tui.prompt.append is not a chat message hook.
 //
-// Source: sst/opencode v1.19.5 packages/plugin/src/index.ts (Hooks) and
+// Source: sst/opencode v1.19.3 packages/plugin/src/index.ts (Hooks) and
 // packages/opencode/src/session/{tools,llm/request}.ts.
 var contextEvents = map[string]bool{
 	OCToolExecAfter:  true,
