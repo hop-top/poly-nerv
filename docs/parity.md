@@ -18,7 +18,7 @@ code; upstream behavior is cited where a cell depends on it.
 | gemini | no range / 0.3.2, 0.4.1, 0.5.0 | `nervd --adapter gemini`; stdin JSON | ✓ | ✓ `systemMessage` | ? emits `tool_input` | ✓ SessionStart, BeforeAgent, AfterTool | ◐ Start, End native; Stop = SessionEnd | [gemini](#flag-gemini) |
 | codex | `>=0.1.0` / 0.40.0, 0.41.0, 0.42.0 | `nervd --adapter codex`; stdin JSON | ◐ | ◐ stderr | ? claude encoding | ◐ SessionStart, UserPromptSubmit, PreToolUse, PostToolUse | ◐ Start, Stop; no End | [codex](#flag-codex) |
 | opencode | `>=1.19.3 <2.0.0` / 1.19.3 | `nervd --adapter opencode`; bridge plugin | ✓ PreToolUse only | ◐ bridge log | ✗ ignored | ✓ PostToolUse, SessionStart | ✓ Start, End, Stop | ⚠ [opencode](#flag-opencode) |
-| goose | no range, no pin | none (not an `--adapter` route); MCP extension `nerv-bridge` | ◐ PreToolUse, Stop | ◐ decision `message` | ✗ | ✗ no channel | ✓ Start, End, Stop | ⚠ [goose](#flag-goose) |
+| goose | `>=1.55.0` / 1.55.0 | `nervd --adapter goose`; plugin `hooks.json` (`~/.agents/plugins/nerv/hooks/hooks.json`), stdin JSON | ◐ PreToolUse, Stop | ✗ stderr only | ✗ | ✗ no channel | ✓ Start, End, Stop | ⚠ [goose](#flag-goose) |
 | openhands | no range, no pin | `nervd --adapter openhands`; stdin JSON | ⚠ via exit 2 | ◐ `reason` + stderr | ✗ | ◐ SessionStart, UserPromptSubmit | ◐ Start, End; Stop needs core change | ⚠ [openhands](#flag-openhands) |
 
 Vibe (Mistral) and Aider are not supported: no hook protocol, or the
@@ -88,22 +88,47 @@ Adapter: `adapters/openhands/translate.go` `FromEventDecision`.
 - No `PreCompact` (only post-compaction `session.compacted`).
   `PostToolUseFailure` is undeclared and renders `-`.
 
-### <a id="flag-goose"></a>⚠ Goose — observation-only except PreToolUse/Stop block; bridge command does not resolve
+### <a id="flag-goose"></a>⚠ Goose — observation-only except PreToolUse/Stop block; no context channel
 
-- Goose hooks are observation-only except blocking on PreToolUse and
-  Stop. Hook stdout is read only for the decision and, on SessionStart,
-  a user-visible `banner` stored with `agent_visible=false`
-  (`crates/goose/src/hooks/mod.rs` `emit_collecting_banners`,
-  `agents/state_machine/session.rs` `session_start_message`). No context
-  channel; `context` is dropped.
-- Rewrite maps to `continue` and is dropped.
-- Goose is not an `nervd --adapter` route. The installer writes an MCP
-  extension `nerv-bridge` with `command: nerv`, `args: [dispatch, goose]`
-  (`adapters/goose/adapter.go`), and `nerv dispatch` is not a `nerv`
-  subcommand (`nerv dispatch goose` exits 2 with "unknown command").
-  The same defect was fixed for Gemini and Codex; Goose still
-  has it, so installed Goose hooks do not reach nervd.
-- No `versions.yaml` entry and no `cli_version_range`.
+- Fixed: the installer wrote an MCP extension `nerv-bridge` running
+  `nerv dispatch goose`, which does not exist. It now writes a Goose
+  plugin hooks file, `~/.agents/plugins/nerv/hooks/hooks.json`, whose
+  commands are `nervd --adapter goose`, for SessionStart, SessionEnd,
+  Stop, UserPromptSubmit, PreToolUse, PostToolUse, PostToolUseFailure,
+  AfterFileEdit. Legacy `nerv dispatch goose` and bare `nervd` commands in
+  that file are upgraded in place. Verified against goose 1.55.0 with a
+  real run (`TestRealGoose_*`, set `NERV_GOOSE_BIN`): a nerv block on
+  PreToolUse denies the tool call; a block on Stop keeps the turn going.
+- Block: only PreToolUse and Stop (`hooks.md` "Blocking a Tool Call").
+  nervd answers `{"decision":"block","reason":...}` on stdout, exit 0;
+  the reason reaches the model. A block on any other event is ignored by
+  Goose, so nervd prints nothing.
+- Stop block is capped by Goose at 8 consecutive blocks
+  (`GOOSE_STOP_HOOK_BLOCK_CAP`), after which it ends the turn.
+- No context channel: Goose reads stdout only for the decision and, on
+  SessionStart, a user-visible `banner` that is stored with
+  `agent_visible=false` (`crates/goose/src/hooks/mod.rs`
+  `emit_collecting_banners`, `agents/state_machine/session.rs`
+  `session_start_message`). `context` is dropped. Warn text goes to
+  stderr only; rewrite is dropped.
+- Fail-open by default: a hook that crashes, times out, or prints
+  anything but a decision on stdout lets the tool call proceed
+  (`on_failure` defaults to `allow`); the installer does not set
+  `on_failure: block`.
+- Not live: `capabilities.yaml` still lists SSE-derived events
+  (Notification, PostCompact, PermissionRequest, subagent and task events,
+  StopFailure) and shell-matched synthesized events (CwdChanged,
+  Worktree*, PreCompact, InstructionsLoaded, TaskCreated). Goose hooks do
+  not emit them and no bridge produces them; the matrix cells for those
+  remain declarations, not delivery. Goose also never emits
+  `SubagentStart`/`SubagentStop` hooks.
+- Tool names are Goose's (`shell`, `write`, `edit`), not Claude's;
+  handler `match` patterns must use them.
+- An earlier install left a `nerv-bridge` entry in
+  `~/.config/goose/config.yaml`; the installer only manages the hooks
+  file, so remove that entry by hand.
+- Pinned to 1.55.0 (`versions.yaml`, `cli_version_range`); earlier
+  releases are unverified.
 
 ### <a id="flag-codex"></a>◐ Codex — context events are a subset; strict output schemas
 

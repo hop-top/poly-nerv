@@ -10,6 +10,19 @@ in the first tagged release.
 
 ## Unreleased
 
+### Goose hooks
+
+- `nervd --adapter goose` route: decodes Goose plugin-hook payloads
+  (`event` field) and answers block on PreToolUse and Stop as
+  `{"decision":"block","reason":...}` on stdout; allow, warn, rewrite are
+  empty stdout, context is dropped (no channel).
+- Goose install now writes `~/.agents/plugins/nerv/hooks/hooks.json`
+  (command `nervd --adapter goose`) instead of an MCP extension running
+  the nonexistent `nerv dispatch goose`; legacy commands in that file are
+  upgraded in place, idempotent. Remove any old `nerv-bridge` entry from
+  `~/.config/goose/config.yaml` by hand.
+- Pinned goose 1.55.0 (`versions.yaml`, `cli_version_range >=1.55.0`).
+
 ### Removed
 
 - Vibe (Mistral) and Aider adapters, with their `nervd --adapter vibe` /

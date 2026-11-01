@@ -180,11 +180,11 @@ func TestSmoke_MergeAndDetect(t *testing.T) {
 	}
 
 	content := string(merged)
-	if !containsStr(content, "nerv-bridge") {
-		t.Error("merged config missing nerv-bridge extension")
+	if !containsStr(content, "nervd --adapter goose") {
+		t.Error("merged config missing nervd --adapter goose command")
 	}
-	if !containsStr(content, "nerv") {
-		t.Error("merged config missing nerv command")
+	if containsStr(content, "nerv-bridge") {
+		t.Error("merged config still carries legacy nerv-bridge extension")
 	}
 }
 

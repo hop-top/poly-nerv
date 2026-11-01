@@ -24,7 +24,7 @@ func (a *Adapter) Detect() (internal.DetectResult, error) {
 	path, err := exec.LookPath("goose")
 	if err != nil {
 		// Check config dirs as fallback signal.
-		for _, cp := range configPaths() {
+		for _, cp := range detectPaths() {
 			if _, err := os.Stat(cp); err == nil {
 				return internal.DetectResult{
 					Found: true,
@@ -56,9 +56,8 @@ func (a *Adapter) Detect() (internal.DetectResult, error) {
 }
 
 // Capabilities reports which hook points Goose supports.
-// Goose has rich native SSE events (Finish, Notification,
-// UpdateConversation, permission, subagent, task events) plus
-// synthesized events via the nerv bridge MCP extension.
+// Tool, session, prompt and stop events arrive natively through plugin
+// hooks (hooks.json); block is honored on PreToolUse and Stop only.
 func (a *Adapter) Capabilities() internal.CapabilityMap {
 	return internal.CapabilityMap{
 		PreToolUse:  true,
@@ -69,39 +68,71 @@ func (a *Adapter) Capabilities() internal.CapabilityMap {
 	}
 }
 
-// ConfigPaths returns paths to Goose config files.
+// ConfigPaths returns the hooks.json files nerv manages. Goose
+// discovers hooks from plugin directories (user: ~/.agents/plugins/<name>/,
+// project: <project>/.agents/plugins/<name>/); each plugin's
+// hooks/hooks.json holds the rules. The user-scope file comes first and is
+// the install target.
 func (a *Adapter) ConfigPaths() []string {
 	return configPaths()
 }
 
-// MergeConfig merges nerv hook entries into existing Goose config.
-// Goose uses YAML config. We output YAML via string manipulation
-// — no yaml library.
+// MergeConfig merges nerv hook rules into an existing plugin hooks.json.
+// Empty input yields a fresh document. Existing nerv commands, including
+// the legacy `nerv dispatch goose` and bare `nervd`, are rewritten to the
+// adapter-routed command in place; other hooks and top-level keys are
+// preserved. Output is deterministic, and merging its own output is a no-op.
 func (a *Adapter) MergeConfig(existing []byte) ([]byte, error) {
-	content := string(existing)
-
-	// Check if nerv extension is already configured.
-	if strings.Contains(content, "nerv-bridge") {
-		return existing, nil
+	doc := map[string]any{}
+	if len(strings.TrimSpace(string(existing))) > 0 {
+		if err := json.Unmarshal(existing, &doc); err != nil {
+			return nil, fmt.Errorf("goose: existing hooks.json is not valid JSON: %w", err)
+		}
 	}
-
-	if len(existing) == 0 {
-		return []byte(nervExtensionBlock()), nil
+	hooks, _ := doc["hooks"].(map[string]any)
+	if hooks == nil {
+		hooks = map[string]any{}
 	}
-
-	// If extensions: key already exists, insert nerv-bridge under it
-	// instead of appending a duplicate extensions: block.
-	if strings.Contains(content, "extensions:") {
-		return []byte(insertUnderExtensions(content)), nil
+	for _, ev := range installEvents {
+		rules, _ := hooks[ev].([]any)
+		if !upgradeLegacy(rules) {
+			rules = append(rules, map[string]any{
+				"hooks": []any{map[string]any{
+					"type":    "command",
+					"command": nervCommand,
+				}},
+			})
+		}
+		hooks[ev] = rules
 	}
-
-	// No existing extensions: key — append full block.
-	if !strings.HasSuffix(content, "\n") {
-		content += "\n"
+	doc["hooks"] = hooks
+	out, err := json.MarshalIndent(doc, "", "  ")
+	if err != nil {
+		return nil, fmt.Errorf("goose: marshal hooks.json: %w", err)
 	}
-	content += "\n" + nervExtensionBlock()
+	return append(out, '\n'), nil
+}
 
-	return []byte(content), nil
+// upgradeLegacy rewrites legacy nerv commands in rules to nervCommand and
+// reports whether any rule now carries it.
+func upgradeLegacy(rules []any) bool {
+	found := false
+	for _, r := range rules {
+		rule, _ := r.(map[string]any)
+		actions, _ := rule["hooks"].([]any)
+		for _, a := range actions {
+			act, _ := a.(map[string]any)
+			cmd, _ := act["command"].(string)
+			switch strings.TrimSpace(cmd) {
+			case nervCommand:
+				found = true
+			case "nervd", "nerv dispatch goose":
+				act["command"] = nervCommand
+				found = true
+			}
+		}
+	}
+	return found
 }
 
 // Translate converts a Goose-native event to a nerv envelope.
@@ -119,56 +150,37 @@ func (a *Adapter) Translate(eventBytes []byte) ([]byte, error) {
 
 // --- internal helpers ---
 
+// nervCommand is the hook command written into Goose's hooks.json.
+// --adapter makes nervd decode Goose's payload and answer in its dialect.
+const nervCommand = "nervd --adapter goose"
+
+// installEvents are the Goose hook events nerv subscribes to. Block is
+// honored on PreToolUse and Stop only; the rest are observation. The
+// Before*/After* shell and read events duplicate the tool events, and
+// PreToolUseResult is observation-only, so none are installed.
+var installEvents = []string{
+	"SessionStart", "SessionEnd", "Stop", "UserPromptSubmit",
+	"PreToolUse", "PostToolUse", "PostToolUseFailure", "AfterFileEdit",
+}
+
 func configPaths() []string {
-	paths := []string{
-		filepath.Join(".goose", "config.yaml"),
+	rel := filepath.Join(".agents", "plugins", "nerv", "hooks", "hooks.json")
+	var paths []string
+	if home, err := os.UserHomeDir(); err == nil {
+		paths = append(paths, filepath.Join(home, rel))
+	}
+	return append(paths, rel)
+}
+
+// detectPaths are presence signals used when the goose binary is not on
+// PATH: goose's config file locations.
+func detectPaths() []string {
+	var paths []string
+	if home, err := os.UserHomeDir(); err == nil {
+		paths = append(paths, filepath.Join(home, ".config", "goose", "config.yaml"))
 	}
 	if cfgDir, err := os.UserConfigDir(); err == nil {
-		paths = append([]string{
-			filepath.Join(cfgDir, "goose", "config.yaml"),
-		}, paths...)
+		paths = append(paths, filepath.Join(cfgDir, "goose", "config.yaml"))
 	}
-	return paths
-}
-
-// nervExtensionBlock returns the full YAML config block including the
-// extensions: key for use when no extensions key exists yet.
-func nervExtensionBlock() string {
-	return "# nerv hook integration\nextensions:\n" + nervExtensionEntry()
-}
-
-// nervExtensionEntry returns just the nerv-bridge entry (indented under
-// extensions:) without the extensions: key itself.
-func nervExtensionEntry() string {
-	return `  nerv-bridge:
-    type: stdio
-    command: nerv
-    args:
-      - dispatch
-      - goose
-    enabled: true
-`
-}
-
-// insertUnderExtensions inserts the nerv-bridge entry after the
-// existing extensions: line, preserving all other content.
-func insertUnderExtensions(content string) string {
-	lines := strings.Split(content, "\n")
-	var out []string
-	inserted := false
-	for _, line := range lines {
-		out = append(out, line)
-		if !inserted && strings.TrimSpace(line) == "extensions:" {
-			// Insert nerv-bridge entry right after extensions:.
-			entry := nervExtensionEntry()
-			// entry already has trailing newline; split will add
-			// an empty last element, trim it.
-			entryLines := strings.Split(
-				strings.TrimRight(entry, "\n"), "\n",
-			)
-			out = append(out, entryLines...)
-			inserted = true
-		}
-	}
-	return strings.Join(out, "\n")
+	return append(paths, filepath.Join(".goose", "config.yaml"))
 }

@@ -22,7 +22,7 @@ appendix.
 | claude    | 26     | 0           | 0         | 26/26 (100%) |
 | gemini    | 8      | 16          | 2         | 24/26 (92%) |
 | opencode  | 10     | 13          | 3         | 23/26 (88%) |
-| goose     | 11     | 11          | 4         | 22/26 (85%) |
+| goose     | 16     | 6           | 4         | 22/26 (85%) |
 | openhands | 5      | 15          | 6         | 20/26 (77%) |
 | codex     | 3      | 12          | 11        | 15/26 (58%) |
 
@@ -46,11 +46,11 @@ Columns ordered by coverage, most → least.
 | Stop                 |   ✓    |   ~    |    ✓     |   ✓   |     ~     |   ✓   |
 | StopFailure          |   ✓    |   -    |    ✓     |   ✓   |     ~     |   -   |
 | **prompt**           |        |        |          |       |           |       |
-| UserPromptSubmit     |   ✓    |   ~    |    ~     |   ~   |     ✓     |   ✓   |
+| UserPromptSubmit     |   ✓    |   ~    |    ~     |   ✓   |     ✓     |   ✓   |
 | **tool**             |        |        |          |       |           |       |
-| PreToolUse           |   ✓    |   ✓    |    ✓     |   ~   |     ✓     |   ~   |
-| PostToolUse          |   ✓    |   ✓    |    ✓     |   ~   |     ✓     |   ~   |
-| PostToolUseFailure   |   ✓    |   ~    |    -     |   ~   |     ~     |   ~   |
+| PreToolUse           |   ✓    |   ✓    |    ✓     |   ✓   |     ✓     |   ~   |
+| PostToolUse          |   ✓    |   ✓    |    ✓     |   ✓   |     ✓     |   ~   |
+| PostToolUseFailure   |   ✓    |   ~    |    -     |   ✓   |     ~     |   ~   |
 | **permission**       |        |        |          |       |           |       |
 | PermissionRequest    |   ✓    |   ~    |    ✓     |   ✓   |     -     |   ~   |
 | PermissionDenied     |   ✓    |   ~    |    ✓     |   ✓   |     ~     |   ~   |
@@ -70,7 +70,7 @@ Columns ordered by coverage, most → least.
 | PreCompact           |   ✓    |   ✓    |    -     |   ~   |     ~     |   -   |
 | PostCompact          |   ✓    |   ~    |    ✓     |   ✓   |     ~     |   -   |
 | **file**             |        |        |          |       |           |       |
-| FileChanged          |   ✓    |   ~    |    ✓     |   ~   |     ~     |   ~   |
+| FileChanged          |   ✓    |   ~    |    ✓     |   ✓   |     ~     |   ~   |
 | **worktree**         |        |        |          |       |           |       |
 | WorktreeCreate       |   ✓    |   ~    |    ~     |   ~   |     -     |   ~   |
 | WorktreeRemove       |   ✓    |   ~    |    ~     |   ~   |     -     |   ~   |

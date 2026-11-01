@@ -18,3 +18,9 @@ matrix:
     package: "opencode-ai"
     install: npm
     versions: ["1.19.3"]
+  goose:
+    # Plugin hooks (hooks/hooks.json) verified at 1.55.0. GitHub release
+    # binaries; crates.io goose-cli is an unrelated crate.
+    package: "aaif-goose/goose"
+    install: github-release
+    versions: ["1.55.0"]

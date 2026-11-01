@@ -1,7 +1,6 @@
 package goose
 
 import (
-	"strings"
 	"testing"
 )
 
@@ -91,38 +90,6 @@ func TestRegression_SynthesisSource_WorktreeCreated(t *testing.T) {
 	if *env.SynthesisSource != "shell-match" {
 		t.Errorf("synthesis_source = %q, want %q",
 			*env.SynthesisSource, "shell-match")
-	}
-}
-
-// --- Issue 7: duplicate extensions: YAML key ---
-
-func TestRegression_MergeConfig_DuplicateExtensions(t *testing.T) {
-	existing := []byte(`extensions:
-  other-ext:
-    enabled: true
-`)
-	a := &Adapter{}
-	merged, err := a.MergeConfig(existing)
-	if err != nil {
-		t.Fatalf("MergeConfig: %v", err)
-	}
-	content := string(merged)
-
-	// Must NOT have two "extensions:" lines.
-	count := strings.Count(content, "extensions:")
-	if count > 1 {
-		t.Errorf("found %d 'extensions:' lines, want 1:\n%s",
-			count, content)
-	}
-
-	// nerv-bridge must be present.
-	if !strings.Contains(content, "nerv-bridge") {
-		t.Error("merged config missing nerv-bridge")
-	}
-
-	// other-ext must still be present.
-	if !strings.Contains(content, "other-ext") {
-		t.Error("merged config lost other-ext")
 	}
 }
 

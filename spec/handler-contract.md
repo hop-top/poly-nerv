@@ -142,9 +142,9 @@ depends on.
 | codex | `hookSpecificOutput.additionalContext` (with `hookEventName`); same encoding as claude | SessionStart, UserPromptSubmit, PreToolUse, PostToolUse (Stop and compaction outputs reject the field, so dropped) |
 | opencode | bridge plugin appends to the tool result (`tool.execute.after` `output.output`) or pushes onto the system prompt (`experimental.chat.system.transform`) | native `tool.execute.after` (PostToolUse), `session.created` (SessionStart, delivered via the plugin `event` hook); OpenCode plugin API v1, `>=1.19.3 <2.0.0` |
 | openhands | top-level `additionalContext` (decision key is `action`, host reads `decision`; see [parity](../docs/parity.md#flag-openhands)) | SessionStart, UserPromptSubmit |
-| goose | none — dropped; hooks are observation-only except PreToolUse/Stop block | — |
+| goose | none — dropped; hooks are observation-only except PreToolUse/Stop block (`{"decision":"block","reason":...}` on stdout, exit 0; see [parity](../docs/parity.md#flag-goose)) | — |
 
-Adapter selection: `nervd --adapter <cli>` (codex, gemini, opencode,
+Adapter selection: `nervd --adapter <cli>` (codex, gemini, goose, opencode,
 openhands; `claude` is the default) makes stateless nervd read that
 CLI's native hook JSON and answer in its dialect, using the native event
 name to pick the context channel. `nerv install` writes the flag into

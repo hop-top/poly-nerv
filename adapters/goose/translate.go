@@ -114,9 +114,81 @@ var nervActionToGoose = map[merger.Action]string{
 	merger.Rewrite: "continue",
 }
 
+// hookToNerv maps Goose plugin-hook event names (the "event" field of the
+// stdin payload; documentation/docs/guides/context-engineering/hooks.md)
+// to nerv canonical names. PreToolUseResult, BeforeReadFile and the
+// shell-execution events are not installed and not mapped.
+var hookToNerv = map[string]events.Event{
+	"SessionStart":       events.EventSessionStart,
+	"SessionEnd":         events.EventSessionEnd,
+	"Stop":               events.EventStop,
+	"UserPromptSubmit":   events.EventUserPromptSubmit,
+	"PreToolUse":         events.EventPreToolUse,
+	"PostToolUse":        events.EventPostToolUse,
+	"PostToolUseFailure": events.EventPostToolUseFailure,
+	"AfterFileEdit":      events.EventFileChanged,
+}
+
+// hookToEnvelope converts a Goose plugin-hook payload. Payload fields:
+// event, session_id, matcher_context, tool_name, tool_input, message,
+// last_assistant_message, working_dir.
+func hookToEnvelope(name string, m map[string]any) (*envelope.Envelope, error) {
+	nervEvent, ok := hookToNerv[name]
+	if !ok {
+		return nil, fmt.Errorf("goose: unknown hook event %q", name)
+	}
+	var sess envelope.SessionInfo
+	sess.ID, _ = m["session_id"].(string)
+	sess.CWD, _ = m["working_dir"].(string)
+	payload, err := json.Marshal(m)
+	if err != nil {
+		return nil, fmt.Errorf("goose: marshal payload: %w", err)
+	}
+	return &envelope.Envelope{
+		NervVersion: "1.0-draft",
+		Event:       string(nervEvent),
+		Timestamp:   time.Now(),
+		CLI:         envelope.CLIInfo{Name: "goose"},
+		Session:     sess,
+		Payload:     payload,
+	}, nil
+}
+
+// blockEvents are the hook events on which Goose honors a block decision.
+var blockEvents = map[string]bool{"PreToolUse": true, "Stop": true}
+
+// FromEventDecision renders a decision for a Goose plugin hook. Goose
+// reads hook stdout as the decision channel: `{"decision":"block",
+// "reason":...}` denies a PreToolUse call or keeps a Stop turn going
+// (reason is shown to the model); empty stdout with exit 0 allows. Block
+// on any other event is ignored by Goose, so nothing is emitted. Context,
+// warn text and rewrite have no channel and are dropped. A nil map means
+// empty stdout.
+func FromEventDecision(d merger.Decision, nativeEvent string) (map[string]any, int, error) {
+	switch d.Action {
+	case merger.Allow, merger.Warn, merger.Rewrite:
+		return nil, 0, nil
+	case merger.Block:
+		if !blockEvents[nativeEvent] {
+			return nil, 0, nil
+		}
+		reason := d.Message
+		if reason == "" {
+			reason = "blocked by nerv"
+		}
+		return map[string]any{"decision": "block", "reason": reason}, 0, nil
+	}
+	return nil, 0, fmt.Errorf("goose: unsupported action %q", d.Action)
+}
+
 // ToEnvelope converts a Goose CLI event (parsed JSON map) into a nerv
-// Envelope. Returns an error if the event name is unrecognized.
+// Envelope. Plugin-hook payloads carry an "event" field; the older
+// type/hook_event_name bridge dialect is still accepted. Returns an error
+// if the event name is unrecognized.
 func ToEnvelope(gooseEvent map[string]any) (*envelope.Envelope, error) {
+	if name, _ := gooseEvent["event"].(string); name != "" {
+		return hookToEnvelope(name, gooseEvent)
+	}
 	rawName, ok := gooseEvent["type"].(string)
 	if !ok || rawName == "" {
 		// Fall back to hook_event_name for bridge compatibility.
