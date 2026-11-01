@@ -2,11 +2,14 @@ package main
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -30,7 +33,8 @@ func tailCmd() *cobra.Command {
 		Short: "Stream live hook events",
 		Long: `Tail the JSONL event log in real time:
 
-  nerv tail                        # follow mode
+  nerv tail                        # recent entries, then follow
+  nerv tail --no-follow            # print recent entries and exit
   nerv tail --event PreToolUse     # filter by event
   nerv tail --cli claude           # filter by CLI
   nerv tail --slow                 # only events >100ms`,
@@ -45,6 +49,7 @@ func tailCmd() *cobra.Command {
 	cmd.Flags().String("event", "", "Filter by event name")
 	cmd.Flags().String("cli", "", "Filter by CLI name")
 	cmd.Flags().Bool("slow", false, "Only show events where handler took >100ms")
+	cmd.Flags().Bool("no-follow", false, "Print recent entries and exit instead of streaming")
 	cmd.Flags().Int("last", 20, "Number of recent entries to show initially")
 
 	return cmd
@@ -59,6 +64,14 @@ func runTail(cmd *cobra.Command, _ []string) error {
 	cliFilter, _ := cmd.Flags().GetString("cli")
 	slowOnly, _ := cmd.Flags().GetBool("slow")
 	last, _ := cmd.Flags().GetInt("last")
+	noFollow, _ := cmd.Flags().GetBool("no-follow")
+
+	ctx := cmd.Context()
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	ctx, stop := signal.NotifyContext(ctx, os.Interrupt, syscall.SIGTERM)
+	defer stop()
 
 	dir := eventLogDir()
 
@@ -90,17 +103,26 @@ func runTail(cmd *cobra.Command, _ []string) error {
 		}
 	}
 
-	// Follow mode: watch the current day's file.
-	return followLog(dir, eventFilter, cliFilter, slowOnly, format)
+	if noFollow {
+		return nil
+	}
+
+	// Follow mode: watch the current day's file until ctx is done.
+	return followLog(ctx, dir, eventFilter, cliFilter, slowOnly, format)
 }
 
 // followLog tails the current day's log file, rolling over at midnight.
+// It returns nil once ctx is cancelled.
 func followLog(
+	ctx context.Context,
 	dir, eventFilter, cliFilter string,
 	slowOnly bool,
 	format string,
 ) error {
 	for {
+		if ctx.Err() != nil {
+			return nil
+		}
 		today := time.Now().Format("2006-01-02")
 		path := filepath.Join(dir, fmt.Sprintf("events-%s.jsonl", today))
 
@@ -109,7 +131,9 @@ func followLog(
 			if _, err := os.Stat(path); err == nil {
 				break
 			}
-			time.Sleep(500 * time.Millisecond)
+			if !sleepCtx(ctx, 500*time.Millisecond) {
+				return nil
+			}
 
 			// Check for date rollover.
 			newToday := time.Now().Format("2006-01-02")
@@ -133,13 +157,24 @@ func followLog(
 			return fmt.Errorf("seeking: %w", err)
 		}
 
-		sc := bufio.NewScanner(f)
-		sc.Buffer(make([]byte, 0, 64*1024), 2*1024*1024)
+		// bufio.Scanner is sticky after the first EOF and would never
+		// see appended lines; a Reader retries cleanly. pending holds a
+		// partial trailing line until its newline arrives.
+		br := bufio.NewReaderSize(f, 64*1024)
+		var pending []byte
 
 		for {
-			for sc.Scan() {
+			for {
+				line, err := br.ReadBytes('\n')
+				pending = append(pending, line...)
+				if err != nil {
+					break // EOF: wait for more data
+				}
+				data := pending
+				pending = nil
+
 				var e eventlog.Entry
-				if err := json.Unmarshal(sc.Bytes(), &e); err != nil {
+				if err := json.Unmarshal(data, &e); err != nil {
 					continue
 				}
 
@@ -165,8 +200,23 @@ func followLog(
 				break         // outer loop picks up new file
 			}
 
-			time.Sleep(200 * time.Millisecond)
+			if !sleepCtx(ctx, 200*time.Millisecond) {
+				_ = f.Close() // read-only; nothing to flush
+				return nil
+			}
 		}
+	}
+}
+
+// sleepCtx sleeps for d and reports false if ctx ended first.
+func sleepCtx(ctx context.Context, d time.Duration) bool {
+	t := time.NewTimer(d)
+	defer t.Stop()
+	select {
+	case <-ctx.Done():
+		return false
+	case <-t.C:
+		return true
 	}
 }
 
