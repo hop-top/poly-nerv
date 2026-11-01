@@ -63,11 +63,17 @@ jobs:
         working-directory: sdk/php
         run: composer install --no-interaction --prefer-dist
       - run: go build -buildvcs=false ./...
-      - run: go test -cover -coverprofile=coverage.out ./...
+      # NERV_COVERDIR makes cmd/nerv's subprocess tests build the nerv
+      # binary with -cover; their profiles are merged into the figure below.
+      - run: |
+          mkdir -p "$PWD/covdata"
+          NERV_COVERDIR="$PWD/covdata" go test -cover -coverprofile=coverage.out ./...
       # Generated protobuf/Connect code (gen/go), the marketplace template
       # handler and the nerv-codegen tool are excluded from the figure.
       - name: Coverage gate (>=60%)
         run: |
+          go tool covdata textfmt -i=covdata -o=coverage.sub.out
+          grep -v '^mode:' coverage.sub.out >> coverage.out
           grep -v -E '^hop\.top/nerv/(gen/go/|marketplace/template/|cmd/nerv-codegen/)' coverage.out > coverage.gate.out
           TOTAL=$(go tool cover -func=coverage.gate.out | tail -1 | awk '{print $3}' | tr -d '%')
           echo "Coverage: ${TOTAL}%"
