@@ -32,6 +32,15 @@ services:
         CLI_VERSION: "${OPENCODE_VERSION:-1.19.3}"
         CLI_PACKAGE: "opencode-ai"
         CLI_INSTALL_METHOD: npm
+  opencode-v2:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.test
+      args:
+        CLI_NAME: opencode
+        CLI_VERSION: "${OPENCODE_V2_VERSION:-2.2.5}"
+        CLI_PACKAGE: "anomalyco/opencode"
+        CLI_INSTALL_METHOD: github-release
   goose:
     build:
       context: ..
