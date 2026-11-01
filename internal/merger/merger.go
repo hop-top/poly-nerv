@@ -2,7 +2,10 @@
 // semantics defined in spec/handler-contract.md.
 package merger
 
-import "strings"
+import (
+	"strings"
+	"unicode/utf8"
+)
 
 // MetaSkips is the metadata key whose value, when present, is a
 // []map[string]any list of per-hook skip records. Merge concatenates
@@ -22,12 +25,24 @@ const (
 	Rewrite Action = "rewrite"
 )
 
+// MaxContextBytes caps the merged Context. Longer merged context is
+// cut on a rune boundary and suffixed with ContextTruncatedMarker so
+// the total stays within the cap.
+const MaxContextBytes = 8 * 1024
+
+// ContextTruncatedMarker terminates a Context that hit MaxContextBytes.
+const ContextTruncatedMarker = "\n[nerv: context truncated]"
+
 // Decision from a single handler.
 type Decision struct {
 	Action   Action
 	Message  string
 	Rewrite  any
 	Metadata map[string]any
+	// Context is text for the model's context window, valid with any
+	// action. Adapters map it to the host CLI's model-context channel
+	// where one exists and drop it otherwise.
+	Context string
 }
 
 // Merge combines N decisions using spec merge semantics:
@@ -38,6 +53,8 @@ type Decision struct {
 //   - First block wins; remaining decisions ignored.
 //   - Multiple rewrites compose left-to-right.
 //   - Multiple warns concatenate (newline-separated).
+//   - Contexts concatenate in hook order (newline-separated), capped at
+//     MaxContextBytes; dropped entirely when the merge blocks.
 //   - Error from a hook → treated as allow for that hook only.
 func Merge(decisions []Decision) Decision {
 	if len(decisions) == 0 {
@@ -46,6 +63,7 @@ func Merge(decisions []Decision) Decision {
 
 	var (
 		warns    []string
+		contexts []string
 		rewrites []any
 		lastRew  Decision
 		meta     = make(map[string]any)
@@ -63,6 +81,10 @@ func Merge(decisions []Decision) Decision {
 				continue
 			}
 			meta[k] = v
+		}
+
+		if d.Action != Block && d.Context != "" {
+			contexts = append(contexts, d.Context)
 		}
 
 		switch d.Action {
@@ -92,6 +114,8 @@ func Merge(decisions []Decision) Decision {
 		meta = nil
 	}
 
+	ctx := capContext(strings.Join(contexts, "\n"))
+
 	// Rewrite wins over warn, but warn messages preserved.
 	if len(rewrites) > 0 {
 		return Decision{
@@ -99,6 +123,7 @@ func Merge(decisions []Decision) Decision {
 			Message:  strings.Join(warns, "\n"),
 			Rewrite:  lastRew.Rewrite,
 			Metadata: meta,
+			Context:  ctx,
 		}
 	}
 
@@ -107,13 +132,28 @@ func Merge(decisions []Decision) Decision {
 			Action:   Warn,
 			Message:  strings.Join(warns, "\n"),
 			Metadata: meta,
+			Context:  ctx,
 		}
 	}
 
 	return Decision{
 		Action:   Allow,
 		Metadata: meta,
+		Context:  ctx,
 	}
+}
+
+// capContext enforces MaxContextBytes. Over-cap input keeps its head,
+// cut back to a rune boundary, plus ContextTruncatedMarker.
+func capContext(s string) string {
+	if len(s) <= MaxContextBytes {
+		return s
+	}
+	cut := MaxContextBytes - len(ContextTruncatedMarker)
+	for cut > 0 && !utf8.RuneStart(s[cut]) {
+		cut--
+	}
+	return s[:cut] + ContextTruncatedMarker
 }
 
 // appendSkips concatenates two MetaSkips values into a single

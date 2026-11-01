@@ -83,6 +83,23 @@ including `close:` semantic-mismatch mappings) | `-` not covered |
 `?` not declared in `capabilities.yaml` (treat as uncovered until the
 file is amended).
 
+## Context injection
+
+Whether the adapter delivers a decision's `context` field to the
+model (see [handler contract § Context](../spec/handler-contract.md#context)).
+Where there is no channel, `context` is dropped silently.
+
+| Adapter   | Context injection | Channel / events |
+|-----------|:-----------------:|------------------|
+| claude    | ✓ | `hookSpecificOutput.additionalContext` on SessionStart, SubagentStart, UserPromptSubmit, PreToolUse, PostToolUse, PostToolUseFailure, Stop, SubagentStop |
+| gemini    | ✓ | `hookSpecificOutput.additionalContext` on native SessionStart, BeforeAgent (SubagentStart), AfterTool (PostToolUse) via `gemini.FromEventDecision` |
+| opencode  | - | no model-context channel in the plugin decision |
+| codex     | - | no model-context channel |
+| goose     | - | not wired |
+| openhands | - | not wired |
+| vibe      | - | not wired |
+| aider     | - | no hook protocol |
+
 ## How to read this matrix
 
 Each cell is grounded in the adapter's `capabilities.yaml`. A `✓`

@@ -67,6 +67,7 @@ class Decision:
     message: str | None = None
     rewrite: dict[str, Any] | None = None
     metadata: dict[str, Any] | None = None
+    context: str | None = None  # model-facing text; any action
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize to dict, omitting None fields."""
@@ -77,6 +78,8 @@ class Decision:
             d["rewrite"] = self.rewrite
         if self.metadata is not None:
             d["metadata"] = self.metadata
+        if self.context is not None:
+            d["context"] = self.context
         return d
 
 

@@ -114,10 +114,27 @@ type geminiDecision struct {
 	HookSpecificOut map[string]any `json:"hookSpecificOutput,omitempty"`
 }
 
+// contextEvents are the Gemini CLI native events whose output accepts
+// hookSpecificOutput.additionalContext.
+var contextEvents = map[string]bool{
+	"SessionStart": true,
+	"BeforeAgent":  true,
+	"AfterTool":    true,
+}
+
 // FromDecision converts a nerv merger Decision into a Gemini-native
 // decision map and exit code. Gemini uses "deny" over "block" and
-// exit code 2 for blocking.
+// exit code 2 for blocking. It has no event name, so Context is
+// dropped; use FromEventDecision to deliver it.
 func FromDecision(d merger.Decision) (map[string]any, int, error) {
+	return FromEventDecision(d, "")
+}
+
+// FromEventDecision is FromDecision for a known Gemini native event
+// name (e.g. "AfterTool", not the nerv name). A non-empty Context on a
+// non-block decision is emitted as hookSpecificOutput.additionalContext
+// when the event is in contextEvents, and dropped otherwise.
+func FromEventDecision(d merger.Decision, geminiEvent string) (map[string]any, int, error) {
 	gemAction, ok := nervActionToGemini[d.Action]
 	if !ok {
 		return nil, 0, fmt.Errorf(
@@ -146,6 +163,13 @@ func FromDecision(d merger.Decision) (map[string]any, int, error) {
 			out.HookSpecificOut = make(map[string]any)
 		}
 		out.HookSpecificOut["tool_input"] = d.Rewrite
+	}
+
+	if d.Context != "" && d.Action != merger.Block && contextEvents[geminiEvent] {
+		if out.HookSpecificOut == nil {
+			out.HookSpecificOut = make(map[string]any)
+		}
+		out.HookSpecificOut["additionalContext"] = d.Context
 	}
 
 	// Marshal to map for flexible serialization.

@@ -220,7 +220,11 @@ func decodeStateless(raw []byte) (*envelope.Envelope, string, error) {
 // message on stderr. Translation failures fail open (exit 0) so a nerv
 // bug never blocks the calling CLI.
 func respondClaude(out, errw io.Writer, event string, d merger.Decision) int {
-	cd := claude.Decision{Action: string(d.Action), Reason: d.Message}
+	cd := claude.Decision{
+		Action:  string(d.Action),
+		Reason:  d.Message,
+		Context: d.Context,
+	}
 	if d.Action == merger.Warn && d.Message != "" {
 		_, _ = fmt.Fprintf(errw, "nervd: warn: %s\n", d.Message)
 	}

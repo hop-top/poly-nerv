@@ -18,6 +18,9 @@ type Decision struct {
 	Action  string          `json:"action"` // "allow", "block", "rewrite"
 	Reason  string          `json:"reason,omitempty"`
 	Payload json.RawMessage `json:"payload,omitempty"`
+	// Context is model-facing text; emitted as
+	// hookSpecificOutput.additionalContext on contextEvents.
+	Context string `json:"context,omitempty"`
 }
 
 // ToEnvelope converts a Claude Code hook event (stdin JSON) to a nerv
@@ -71,6 +74,20 @@ var silentStdoutEvents = map[string]bool{
 	"WorktreeRemove": true,
 }
 
+// contextEvents are the Claude Code events whose stdout JSON accepts
+// hookSpecificOutput.additionalContext. Context on any other event is
+// dropped.
+var contextEvents = map[string]bool{
+	"SessionStart":       true,
+	"SubagentStart":      true,
+	"UserPromptSubmit":   true,
+	"PreToolUse":         true,
+	"PostToolUse":        true,
+	"PostToolUseFailure": true,
+	"Stop":               true,
+	"SubagentStop":       true,
+}
+
 // FromDecision converts a nerv Decision to Claude's expected stdout JSON
 // and exit code. Returns (jsonBytes, exitCode, error). A nil byte slice
 // means write nothing to stdout.
@@ -82,6 +99,10 @@ var silentStdoutEvents = map[string]bool{
 //
 // Warn has no Claude channel: it degrades to allow here; callers surface
 // the message on stderr.
+//
+// A non-empty Context on allow, warn or rewrite is emitted as
+// hookSpecificOutput.additionalContext when the event is in
+// contextEvents; exit codes are unaffected. Block ignores Context.
 func (t *Translator) FromDecision(
 	d Decision, eventName string,
 ) ([]byte, int, error) {
@@ -91,7 +112,21 @@ func (t *Translator) FromDecision(
 
 	switch d.Action {
 	case "allow", "warn":
-		return []byte("{}"), 0, nil
+		if d.Context == "" || !contextEvents[eventName] {
+			return []byte("{}"), 0, nil
+		}
+		b, err := json.Marshal(map[string]any{
+			"hookSpecificOutput": map[string]any{
+				"hookEventName":     eventName,
+				"additionalContext": d.Context,
+			},
+		})
+		if err != nil {
+			return nil, 0, fmt.Errorf(
+				"claude: marshal context decision: %w", err,
+			)
+		}
+		return b, 0, nil
 
 	case "block":
 		out := buildBlockOutput(eventName, d.Reason)
@@ -107,6 +142,11 @@ func (t *Translator) FromDecision(
 		out, err := buildRewriteOutput(eventName, d.Payload)
 		if err != nil {
 			return nil, 0, err
+		}
+		if d.Context != "" && contextEvents[eventName] {
+			if hso, ok := out["hookSpecificOutput"].(map[string]any); ok {
+				hso["additionalContext"] = d.Context
+			}
 		}
 		b, err := json.Marshal(out)
 		if err != nil {

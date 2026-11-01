@@ -71,12 +71,17 @@ class TestDecision:
         out = d.to_dict()
         assert out["metadata"] == {"reason": "safe"}
 
+    def test_context_included(self):
+        d = Decision(action="allow", context="for the model")
+        assert d.to_dict() == {"action": "allow", "context": "for the model"}
+
     def test_none_fields_omitted(self):
         d = Decision(action="allow")
         out = d.to_dict()
         assert "message" not in out
         assert "rewrite" not in out
         assert "metadata" not in out
+        assert "context" not in out
 
     def test_roundtrip_json(self):
         d = Decision(action="warn", message="heads up")

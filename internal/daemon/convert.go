@@ -88,6 +88,7 @@ func decisionToProto(d merger.Decision) (*nervv1.Decision, error) {
 	out := &nervv1.Decision{
 		Action:  actionToProto(d.Action),
 		Message: d.Message,
+		Context: d.Context,
 	}
 
 	if d.Rewrite != nil {
