@@ -16,18 +16,26 @@ import (
 	"time"
 )
 
-// fakeLLM is an OpenAI-compatible chat endpoint. With shellCmd set, the
+// fakeLLM is an OpenAI-compatible chat endpoint. With a tool set, the
 // first completion that sees no tool result asks for a shell call; later
 // ones answer "done". It records every request's messages as JSON.
 type fakeLLM struct {
-	mu       sync.Mutex
-	shellCmd string
+	mu sync.Mutex
+	// tool/toolArgs, when tool is set, replace the shell call: the first
+	// completion asks for that tool with those arguments.
+	tool     string
+	toolArgs map[string]any
 	seen     []string
 	srv      *httptest.Server
 }
 
 func newFakeLLM(t *testing.T, shellCmd string) *fakeLLM {
-	f := &fakeLLM{shellCmd: shellCmd}
+	return newFakeLLMTool(t, "shell", map[string]any{"command": shellCmd, "description": "run"})
+}
+
+// newFakeLLMTool asks the host for one call to the named tool.
+func newFakeLLMTool(t *testing.T, tool string, args map[string]any) *fakeLLM {
+	f := &fakeLLM{tool: tool, toolArgs: args}
 	f.srv = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodGet {
 			_, _ = w.Write([]byte(`{"object":"list","data":[{"id":"fake","object":"model"}]}`))
@@ -55,11 +63,11 @@ func newFakeLLM(t *testing.T, shellCmd string) *fakeLLM {
 			return "data: " + string(b) + "\n\n"
 		}
 		w.Header().Set("content-type", "text/event-stream")
-		if f.shellCmd != "" && !hasTool {
-			args, _ := json.Marshal(map[string]any{"command": f.shellCmd, "description": "run"})
+		if f.tool != "" && !hasTool {
+			args, _ := json.Marshal(f.toolArgs)
 			_, _ = fmt.Fprint(w, chunk(map[string]any{"role": "assistant", "tool_calls": []any{map[string]any{
 				"index": 0, "id": "call_1", "type": "function",
-				"function": map[string]any{"name": "shell", "arguments": string(args)},
+				"function": map[string]any{"name": f.tool, "arguments": string(args)},
 			}}}, nil))
 			_, _ = fmt.Fprint(w, chunk(map[string]any{}, "tool_calls"))
 		} else {
@@ -99,6 +107,22 @@ type v2Run struct {
 // handlers maps a nerv event to the handler script body.
 func runOpencodeV2(t *testing.T, ocBin string, shellCmd string, handlers map[string]string) v2Run {
 	t.Helper()
+	return runOpencodeV2With(t, ocBin, newFakeLLM(t, shellCmd), handlers)
+}
+
+// runOpencodeV2With is runOpencodeV2 against a caller-built fake LLM.
+func runOpencodeV2With(t *testing.T, ocBin string, llm *fakeLLM, handlers map[string]string) v2Run {
+	t.Helper()
+	cfg := fmt.Sprintf(`{"model":"fake/fake","providers":{"fake":{`+
+		`"package":"@opencode/ai/providers/openai-compatible",`+
+		`"settings":{"baseURL":%q},"models":{"fake":{}}}}}`, llm.srv.URL+"/v1")
+	return runOpencodeReal(t, ocBin, cfg, []string{"run", "--standalone", "--auto", "-m", "fake/fake", "do it"}, llm, handlers)
+}
+
+// runOpencodeReal installs nerv into an isolated project, wires the
+// handlers, writes cfg as opencode.json and runs `ocBin args...`.
+func runOpencodeReal(t *testing.T, ocBin, cfg string, args []string, llm *fakeLLM, handlers map[string]string) v2Run {
+	t.Helper()
 	root := t.TempDir()
 	home := filepath.Join(root, "home")
 	bin := filepath.Join(root, "bin")
@@ -120,10 +144,6 @@ func runOpencodeV2(t *testing.T, ocBin string, shellCmd string, handlers map[str
 		t.Fatal(err)
 	}
 
-	llm := newFakeLLM(t, shellCmd)
-	cfg := fmt.Sprintf(`{"model":"fake/fake","providers":{"fake":{`+
-		`"package":"@opencode/ai/providers/openai-compatible",`+
-		`"settings":{"baseURL":%q},"models":{"fake":{}}}}}`, llm.srv.URL+"/v1")
 	if err := os.WriteFile(filepath.Join(project, "opencode.json"), []byte(cfg), 0o600); err != nil {
 		t.Fatal(err)
 	}
@@ -159,7 +179,7 @@ func runOpencodeV2(t *testing.T, ocBin string, shellCmd string, handlers map[str
 		t.Fatal(err)
 	}
 
-	cmd := exec.Command(ocBin, "run", "--standalone", "--auto", "-m", "fake/fake", "do it")
+	cmd := exec.Command(ocBin, args...)
 	cmd.Dir, cmd.Env = project, env
 	done := make(chan struct{})
 	var out []byte
@@ -232,5 +252,65 @@ func TestRealOpencodeV2_PreToolUseBlock(t *testing.T) {
 	}
 	if tr := r.llm.transcript(); !strings.Contains(tr, "nerv says no") {
 		t.Fatalf("model never saw the block message:\n%.2000s", tr)
+	}
+}
+
+// A nerv rewrite on PreToolUse changes what the real opencode 2.x runs:
+// the shell tool executes the rewritten command, not the requested one.
+func TestRealOpencodeV2_PreToolUseRewriteShell(t *testing.T) {
+	bin := opencodeV2BinOrSkip(t)
+	marks := t.TempDir()
+	asked, rewritten := filepath.Join(marks, "asked"), filepath.Join(marks, "rewritten")
+	r := runOpencodeV2(t, bin, "touch "+asked, map[string]string{
+		"PreToolUse": "#!/bin/sh\ncat >/dev/null\n" +
+			`echo '{"action":"rewrite","rewrite":{"command":"touch ` + rewritten + `","description":"run"}}'` + "\nexit 3\n",
+	})
+	if _, err := os.Stat(rewritten); err != nil {
+		t.Fatalf("rewritten command did not run: %v\n%s", err, r.out)
+	}
+	if _, err := os.Stat(asked); err == nil {
+		t.Fatal("original command ran despite rewrite")
+	}
+}
+
+// The rewrite is in nerv's vocabulary (filePath); the bridge maps it back
+// to the host's "path", so the real write tool lands the file elsewhere.
+func TestRealOpencodeV2_PreToolUseRewritePath(t *testing.T) {
+	bin := opencodeV2BinOrSkip(t)
+	marks := t.TempDir()
+	asked, rewritten := filepath.Join(marks, "asked.txt"), filepath.Join(marks, "rewritten.txt")
+	llm := newFakeLLMTool(t, "write", map[string]any{"path": asked, "content": "hello"})
+	r := runOpencodeV2With(t, bin, llm, map[string]string{
+		"PreToolUse": "#!/bin/sh\ncat >/dev/null\n" +
+			`echo '{"action":"rewrite","rewrite":{"filePath":"` + rewritten + `","content":"hello"}}'` + "\nexit 3\n",
+	})
+	if b, err := os.ReadFile(rewritten); err != nil || string(b) != "hello" {
+		t.Fatalf("write did not land at rewritten path: %v %q\n%s", err, b, r.out)
+	}
+	if _, err := os.Stat(asked); err == nil {
+		t.Fatal("original path was written despite rewrite")
+	}
+}
+
+// Malformed rewrite (wrong type, missing required arg): records how the
+// real host reacts. OpenCode re-validates the rewritten input, so the
+// tool call errors cleanly instead of running.
+func TestRealOpencodeV2_PreToolUseRewriteMalformed(t *testing.T) {
+	bin := opencodeV2BinOrSkip(t)
+	for name, rw := range map[string]string{
+		"wrong-type":  `{"command":42}`,
+		"missing-arg": `{"description":"only"}`,
+	} {
+		t.Run(name, func(t *testing.T) {
+			marker := filepath.Join(t.TempDir(), "ran")
+			r := runOpencodeV2(t, bin, "touch "+marker, map[string]string{
+				"PreToolUse": "#!/bin/sh\ncat >/dev/null\n" +
+					`echo '{"action":"rewrite","rewrite":` + rw + `}'` + "\nexit 3\n",
+			})
+			if _, err := os.Stat(marker); err == nil {
+				t.Fatal("tool ran the original command under a malformed rewrite")
+			}
+			t.Logf("model transcript: %.1500s", r.llm.transcript())
+		})
 	}
 }

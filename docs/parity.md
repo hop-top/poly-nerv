@@ -17,7 +17,7 @@ code; upstream behavior is cited where a cell depends on it.
 | claude | `>=1.0.0` / 1.0.18, 1.1.4, 1.2.1 | `nervd` (or `--adapter claude`); stdin JSON | ✓ | ◐ stderr | ✓ PreToolUse, PermissionRequest | ✓ SessionStart, SubagentStart, UserPromptSubmit, PreToolUse, PostToolUse, PostToolUseFailure, Stop, SubagentStop | ✓ Start, End, Stop | none; reference CLI |
 | gemini | no range / 0.3.2, 0.4.1, 0.5.0 | `nervd --adapter gemini`; stdin JSON | ✓ | ✓ `systemMessage` | ? emits `tool_input` | ✓ SessionStart, BeforeAgent, AfterTool | ◐ Start, End native; Stop = SessionEnd | [gemini](#flag-gemini) |
 | codex | `>=0.1.0` / 0.40.0, 0.41.0, 0.42.0 | `nervd --adapter codex`; stdin JSON | ◐ | ◐ stderr | ? claude encoding | ◐ SessionStart, UserPromptSubmit, PreToolUse, PostToolUse | ◐ Start, Stop; no End | [codex](#flag-codex) |
-| opencode | `>=1.19.3 <2.0.0 \|\| >=2.2.0 <3.0.0` / 1.19.3, 2.2.5 | `nervd --adapter opencode`; bridge plugin | ✓ PreToolUse only | ◐ bridge log | ✗ ignored | ✓ PostToolUse, SessionStart | ✓ Start, End, Stop | ⚠ [opencode](#flag-opencode) |
+| opencode | `>=1.19.3 <2.0.0 \|\| >=2.2.0 <3.0.0` / 1.19.3, 2.2.5 | `nervd --adapter opencode`; bridge plugin | ✓ PreToolUse only | ◐ bridge log | ✓ PreToolUse only (v1, v2) | ✓ PostToolUse, SessionStart | ✓ Start, End, Stop | ⚠ [opencode](#flag-opencode) |
 | goose | `>=1.55.0` / 1.55.0 | `nervd --adapter goose`; plugin `hooks.json` (`~/.agents/plugins/nerv/hooks/hooks.json`), stdin JSON | ◐ PreToolUse, Stop | ✗ stderr only | ✗ | ✗ no channel | ✓ Start, End, Stop | ⚠ [goose](#flag-goose) |
 | openhands | no range, no pin | `nervd --adapter openhands`; stdin JSON | ⚠ via exit 2 | ◐ `reason` + stderr | ✗ | ◐ SessionStart, UserPromptSubmit | ◐ Start, End; Stop needs core change | ⚠ [openhands](#flag-openhands) |
 
@@ -68,7 +68,7 @@ Adapter: `adapters/openhands/translate.go` `FromEventDecision`.
 - Stop is `close:` in `capabilities.yaml` ("API-ready, needs core loop
   change").
 
-### <a id="flag-opencode"></a>⚠ OpenCode — two plugin APIs (v1, v2); permissions observation-only; rewrite ignored
+### <a id="flag-opencode"></a>⚠ OpenCode — two plugin APIs (v1, v2); permissions observation-only; rewrite before-tool only
 
 - Supported: plugin API v1, `>=1.19.3 <2.0.0` (verified against
   sst/opencode v1.19.3), and plugin API v2, `>=2.2.0 <3.0.0` (verified
@@ -100,7 +100,39 @@ Adapter: `adapters/openhands/translate.go` `FromEventDecision`.
 - Block works only by throwing from `tool.execute.before`
   (`adapters/opencode/shim.go`; v2: `ctx.tool.hook("execute.before")`,
   `shim_v2.go`, the message reaches the model).
-- Rewrite is ignored: the shim logs "rewrite decision ignored".
+- Rewrite (before-tool only, both APIs): the rewrite object is the new
+  tool input, same as Claude's `updatedInput` (whole input, not a diff).
+  Replace semantics: the bridge clears the host's args object and assigns
+  the rewrite onto it, in place. v1: `output.args` is the object the tool
+  executes with (anomalyco/opencode v1.19.3
+  `packages/opencode/src/session/tools.ts:106-111`; the permission check
+  and schema validation see the rewritten args, verified with the real
+  1.19.3 binary). v2: `event.input` of `ctx.tool.hook("execute.before")`
+  is mutable (v2.2.5 `packages/plugin/src/promise/tool.ts:38-46`) and the
+  runtime executes `event.input` after the hooks
+  (`packages/core/src/tool.ts:324-333`). Composed rewrites arrive as one
+  merged object (merger). On any other event a rewrite is ignored with a
+  `[nerv] rewrite decision ignored` warning; a non-object rewrite or a
+  rewrite with no payload is ignored with a warning and the tool runs
+  unchanged.
+  - Key mapping: v1 normalises nothing, so keys pass through verbatim
+    (file arg `filePath`, shell `command`). v2 inverts exactly what the
+    bridge adds on the way out: `filePath` becomes `path` when the host
+    input had `path` (tool ids are not args, nothing to map). Every other
+    key passes through. A v2 input with no `path` string is untouched, so
+    a rewritten `filePath` there stays `filePath`.
+  - Precedence (v2, rewrite carries both `filePath` and `path`):
+    `filePath` wins; exception, `filePath` still equals the original
+    value and `path` changed (a handler that edited only `path`), then
+    `path` wins. Rewrite with only `path` passes through.
+  - Malformed rewrite (wrong type, missing required arg), real binaries:
+    both hosts re-validate the rewritten input against the tool schema and
+    fail the call cleanly; the tool does not run and the model gets
+    "invalid arguments" text (v1: `SchemaError(Expected string, got 42 at
+    ["command"])`; v2.2.5: `Invalid arguments for tool "shell": - command:
+    Expected string` / `Missing key`). No state corruption, so the bridge
+    does no schema validation.
+  - Trust: hooks can change what the agent runs, same as Claude.
 - Context: `tool.execute.after` (appended to `output.output`; v2:
   appended to `result.content`) and `session.created` (via
   `experimental.chat.system.transform`; v2: `ctx.session.hook("context")`

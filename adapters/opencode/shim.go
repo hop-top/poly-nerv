@@ -7,7 +7,8 @@ import (
 
 // pluginTemplate is the TypeScript plugin source that bridges OpenCode
 // to nervd. The shim registers handlers for all supported events,
-// shells out to nervd with envelope JSON, and throws on block decisions.
+// shells out to nervd with envelope JSON, throws on block decisions, and
+// applies rewrite decisions to tool.execute.before args in place.
 //
 // Placeholder %s is replaced with the nervd binary path.
 const pluginTemplate = `// nerv Bridge Plugin for OpenCode — auto-generated; do not edit.
@@ -48,7 +49,11 @@ function dispatch(event: OpenCodeEvent): NervDecision {
       timeout: 10_000,
       maxBuffer: 1024 * 1024,
     });
-    return JSON.parse(result.trim());
+    const decision: NervDecision = JSON.parse(result.trim());
+    if (decision.action === "rewrite" && event.type !== "tool.execute.before") {
+      console.warn("[nerv] rewrite decision ignored (only tool.execute.before supports rewrite):", event.type);
+    }
+    return decision;
   } catch (err: unknown) {
     // Fail-open only for transport/execution errors (nervd missing/unreachable).
     const code = (err as { code?: string })?.code;
@@ -61,18 +66,33 @@ function dispatch(event: OpenCodeEvent): NervDecision {
   }
 }
 
-function handleBlocking(event: OpenCodeEvent): void {
+const isPlainObject = (v: unknown): v is Record<string, unknown> =>
+  !!v && typeof v === "object" && !Array.isArray(v);
+
+// Replace semantics: the rewrite is the new tool input. OpenCode runs the
+// tool with the very args object it handed to the hook (session/tools.ts
+// reads no other reference), so it is mutated in place, never reassigned.
+// v1 does not rename tools or args, so nerv's vocabulary is the host's and
+// the rewrite is applied as is.
+function applyRewrite(args: unknown, rewrite: unknown): boolean {
+  if (!isPlainObject(args) || !isPlainObject(rewrite)) return false;
+  for (const k of Object.keys(args)) delete args[k];
+  for (const [k, v] of Object.entries(rewrite)) {
+    Object.defineProperty(args, k, { value: v, writable: true, enumerable: true, configurable: true });
+  }
+  return true;
+}
+
+function handleBlocking(event: OpenCodeEvent, args?: unknown): void {
   const decision = dispatch(event);
   if (decision.action === "block") {
     throw new Error(decision.message ?? "blocked by nerv hook");
   }
-  if (decision.action === "warn" && decision.message) {
+  if ((decision.action === "warn" || decision.action === "rewrite") && decision.message) {
     console.warn("[nerv] warning:", decision.message);
   }
-  // rewrite: not supported by OpenCode's plugin model (throw-only blocking).
-  // Rewrite decisions are logged but not applied.
-  if (decision.action === "rewrite") {
-    console.warn("[nerv] rewrite decision ignored (not supported by OpenCode)");
+  if (decision.action === "rewrite" && !applyRewrite(args, decision.rewrite)) {
+    console.warn("[nerv] rewrite decision ignored (needs an object rewrite and object tool args)");
   }
 }
 
@@ -165,16 +185,20 @@ export default (_ctx: unknown) => ({
 
   // Tool lifecycle. Throwing from tool.execute.before aborts the tool
   // call (plugin.trigger does not catch); the message reaches the model.
+  // A rewrite decision replaces output.args in place.
   "tool.execute.before": async (
     input: { tool?: string; sessionID?: string },
     output?: { args?: unknown },
   ) => {
-    handleBlocking({
-      type: "tool.execute.before",
-      tool: input.tool,
-      session_id: input.sessionID,
-      input: output?.args,
-    });
+    handleBlocking(
+      {
+        type: "tool.execute.before",
+        tool: input.tool,
+        session_id: input.sessionID,
+        input: output?.args,
+      },
+      output?.args,
+    );
   },
   "tool.execute.after": async (
     input: { tool?: string; sessionID?: string; args?: unknown },

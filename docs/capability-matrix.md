@@ -124,7 +124,8 @@ Recurring blockers (lifted from each `capabilities.yaml`'s
   The `permission.ask` hook is declared in `packages/plugin/src/index.ts`
   but never triggered by the runtime (v1.19.3), so permission events are
   observation-only. `todo.updated` fires `TaskCompleted` once per newly
-  completed todo id. Blocking is `throw` from `tool.execute.before`.
+  completed todo id. Blocking is `throw` from `tool.execute.before`; a `rewrite` there
+  replaces the tool args in place (before-tool only, see parity).
   On plugin API v2 (OpenCode 2.x) the bridge subscribes with
   `ctx.event.subscribe()` (`{type, data}`), maps `session.execution.*`
   to `Stop`/`StopFailure`, `session.compaction.ended` to `PostCompact`,

@@ -303,3 +303,75 @@ process.exit(0);
 		t.Errorf("session.deleted = %v", m)
 	}
 }
+
+// Rewrite on execute.before replaces event.input in place, mapping nerv's
+// filePath back to the host's "path". Covers: shell command rewrite,
+// reverse mapping, pass-through of unmapped keys, filePath/path
+// precedence, hosts without the alias, non-object rewrite, and no-op on
+// other events.
+func TestBridgePluginV2_Rewrite(t *testing.T) {
+	stubCase := `  *'"command":"ls"'*) echo '{"action":"rewrite","message":"w","rewrite":{"command":"echo rewritten","timeout":9}}';;
+  *'"content":"c1"'*) echo '{"action":"rewrite","rewrite":{"filePath":"/new","content":"c1","mode":"x"}}';;
+  *'"content":"c2"'*) echo '{"action":"rewrite","rewrite":{"filePath":"/fp","path":"/p","content":"c2"}}';;
+  *'"content":"c3"'*) echo '{"action":"rewrite","rewrite":{"filePath":"/old3","path":"/p3","content":"c3"}}';;
+  *'"content":"c4"'*) echo '{"action":"rewrite","rewrite":{"path":"/only-path","content":"c4"}}';;
+  *'"filePath":"/native"'*) echo '{"action":"rewrite","rewrite":{"filePath":"/native2"}}';;
+  *'"command":"bad"'*) echo '{"action":"rewrite","rewrite":[1]}';;
+  *tool.execute.after*) echo '{"action":"rewrite","rewrite":{"x":1}}';;`
+	driver := `import plugin from "./plugin.ts";
+const hooks: Record<string, Function> = {};
+const ctx: any = {
+  tool: { hook: async (n: string, cb: Function) => { hooks["tool." + n] = cb; return { dispose: async () => {} }; } },
+  session: { hook: async (n: string, cb: Function) => { hooks["session." + n] = cb; return { dispose: async () => {} }; } },
+  event: { subscribe: () => ({ [Symbol.asyncIterator]: () => ({ next: () => new Promise(() => {}) }) }) },
+};
+const def: any = plugin;
+const cleanup: any = await def.setup(ctx);
+const warns: string[] = [];
+console.warn = (...a: any[]) => { warns.push(a.join(" ")); };
+
+const before = async (tool: string, input: any) => {
+  const ev: any = { tool, sessionID: "s", id: "c", input };
+  const ref = ev.input;
+  await hooks["tool.execute.before"](ev);
+  return { input: ev.input, same: ref === ev.input };
+};
+const shell = await before("shell", { command: "ls", description: "d", workdir: "/w" });
+const mapped = await before("write", { path: "/old", content: "c1" });
+const both = await before("write", { path: "/old", content: "c2" });
+const onlyPathChanged = await before("write", { path: "/old3", content: "c3" });
+const pathOnly = await before("write", { path: "/old", content: "c4" });
+const native = await before("read", { filePath: "/native" });
+const bad = await before("shell", { command: "bad" });
+
+const after: any = { tool: "shell", sessionID: "s", id: "c", input: { command: "zzz" }, status: "completed", result: { content: "o" } };
+await hooks["tool.execute.after"](after);
+
+console.log(JSON.stringify({ shell, mapped, both, onlyPathChanged, pathOnly, native, bad, after, warns }));
+await cleanup();
+process.exit(0);
+`
+	got := runBun(t, GeneratePluginV2, stubCase, driver)
+	eq := func(name string, v any, want string) {
+		t.Helper()
+		b, _ := json.Marshal(v)
+		if string(b) != want {
+			t.Errorf("%s = %s, want %s", name, b, want)
+		}
+	}
+	// Go marshals map keys sorted.
+	eq("shell", got["shell"], `{"input":{"command":"echo rewritten","timeout":9},"same":true}`)
+	eq("mapped filePath->path", got["mapped"], `{"input":{"content":"c1","mode":"x","path":"/new"},"same":true}`)
+	eq("both: filePath wins", got["both"], `{"input":{"content":"c2","path":"/fp"},"same":true}`)
+	eq("stale filePath, path changed: path wins", got["onlyPathChanged"], `{"input":{"content":"c3","path":"/p3"},"same":true}`)
+	eq("path only passes through", got["pathOnly"], `{"input":{"content":"c4","path":"/only-path"},"same":true}`)
+	eq("host without path alias", got["native"], `{"input":{"filePath":"/native2"},"same":true}`)
+	eq("non-object rewrite ignored", got["bad"], `{"input":{"command":"bad"},"same":true}`)
+	eq("after untouched", got["after"], `{"id":"c","input":{"command":"zzz"},"result":{"content":"o"},"sessionID":"s","status":"completed","tool":"shell"}`)
+	warns, _ := json.Marshal(got["warns"])
+	for _, w := range []string{"warning: w", "rewrite decision ignored (needs an object rewrite)", "only tool.execute.before supports rewrite"} {
+		if !strings.Contains(string(warns), w) {
+			t.Errorf("missing warning %q in %s", w, warns)
+		}
+	}
+}

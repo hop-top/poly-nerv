@@ -61,7 +61,11 @@ function dispatch(event: OpenCodeEvent): NervDecision {
       timeout: 10_000,
       maxBuffer: 1024 * 1024,
     });
-    return JSON.parse(result.trim());
+    const decision: NervDecision = JSON.parse(result.trim());
+    if (decision.action === "rewrite" && event.type !== "tool.execute.before") {
+      console.warn("[nerv] rewrite decision ignored (only tool.execute.before supports rewrite):", event.type);
+    }
+    return decision;
   } catch (err: unknown) {
     // Fail-open only for transport/execution errors (nervd missing/unreachable).
     const code = (err as { code?: string })?.code;
@@ -84,6 +88,45 @@ function normInput(input: any): unknown {
     return { ...input, filePath: input.path };
   }
   return input;
+}
+
+const isPlainObject = (v: unknown): v is Record<string, unknown> =>
+  !!v && typeof v === "object" && !Array.isArray(v);
+
+// True when normInput added the filePath alias, i.e. the host names the
+// file argument "path" and a rewrite must be mapped back to it.
+const aliasedPath = (input: any): boolean =>
+  isPlainObject(input) && typeof input.path === "string" && input.filePath === undefined;
+
+// Inverse of normInput: a rewrite arrives in nerv's vocabulary (filePath);
+// the host reads "path". Keys normInput did not touch pass through.
+// Precedence when the rewrite carries both: filePath wins, unless it is
+// still the original value and path was changed (a handler that edited
+// only path), in which case path wins.
+function denormRewrite(rewrite: Record<string, unknown>, orig: any): Record<string, unknown> {
+  if (!aliasedPath(orig) || rewrite.filePath === undefined) return rewrite;
+  const { filePath, ...rest } = rewrite;
+  const path =
+    rest.path !== undefined && filePath === orig.path && rest.path !== orig.path ? rest.path : filePath;
+  return { ...rest, path };
+}
+
+// Replace semantics: the rewrite is the new tool input. The hook's input
+// object is mutated in place (cleared, then assigned) so every holder of
+// the reference sees it; a non-object input is replaced outright.
+function applyRewrite(event: any, rewrite: unknown): boolean {
+  if (!isPlainObject(rewrite)) return false;
+  const next = denormRewrite(rewrite, event.input);
+  const cur = event.input;
+  if (!isPlainObject(cur)) {
+    event.input = next;
+    return true;
+  }
+  for (const k of Object.keys(cur)) delete cur[k];
+  for (const [k, v] of Object.entries(next)) {
+    Object.defineProperty(cur, k, { value: v, writable: true, enumerable: true, configurable: true });
+  }
+  return true;
 }
 
 // Joins the text parts of a tool result into the string the v1 bridge sent.
@@ -246,7 +289,7 @@ export default {
     });
 
     // Throwing from execute.before rejects the call; the message reaches
-    // the model.
+    // the model. A rewrite decision replaces event.input.
     await ctx.tool.hook("execute.before", (event: any) => {
       const decision = dispatch({
         type: "tool.execute.before",
@@ -257,11 +300,11 @@ export default {
       if (decision.action === "block") {
         throw new Error(decision.message ?? "blocked by nerv hook");
       }
-      if (decision.action === "warn" && decision.message) {
+      if ((decision.action === "warn" || decision.action === "rewrite") && decision.message) {
         console.warn("[nerv] warning:", decision.message);
       }
-      if (decision.action === "rewrite") {
-        console.warn("[nerv] rewrite decision ignored (not supported by the nerv bridge)");
+      if (decision.action === "rewrite" && !applyRewrite(event, decision.rewrite)) {
+        console.warn("[nerv] rewrite decision ignored (needs an object rewrite)");
       }
     });
 
