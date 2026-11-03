@@ -26,7 +26,7 @@ class Decision extends \Google\Protobuf\Internal\Message
      */
     protected $message = '';
     /**
-     * Rewrite payload; shape is event-specific (e.g. tool input edit).
+     * Rewrite payload, canonical form {"tool_input": {...}} (handler-contract.md).
      *
      * Generated from protobuf field <code>.google.protobuf.Struct rewrite = 3 [json_name = "rewrite"];</code>
      */
@@ -56,7 +56,7 @@ class Decision extends \Google\Protobuf\Internal\Message
      *     @type int $action
      *     @type string $message
      *     @type \Google\Protobuf\Struct $rewrite
-     *           Rewrite payload; shape is event-specific (e.g. tool input edit).
+     *           Rewrite payload, canonical form {"tool_input": {...}} (handler-contract.md).
      *     @type \Google\Protobuf\Struct $metadata
      *           Free-form metadata bag, merged across handlers (last-write-wins
      *           per key in the current Go merger).
@@ -116,7 +116,7 @@ class Decision extends \Google\Protobuf\Internal\Message
     }
 
     /**
-     * Rewrite payload; shape is event-specific (e.g. tool input edit).
+     * Rewrite payload, canonical form {"tool_input": {...}} (handler-contract.md).
      *
      * Generated from protobuf field <code>.google.protobuf.Struct rewrite = 3 [json_name = "rewrite"];</code>
      * @return \Google\Protobuf\Struct|null
@@ -137,7 +137,7 @@ class Decision extends \Google\Protobuf\Internal\Message
     }
 
     /**
-     * Rewrite payload; shape is event-specific (e.g. tool input edit).
+     * Rewrite payload, canonical form {"tool_input": {...}} (handler-contract.md).
      *
      * Generated from protobuf field <code>.google.protobuf.Struct rewrite = 3 [json_name = "rewrite"];</code>
      * @param \Google\Protobuf\Struct $var

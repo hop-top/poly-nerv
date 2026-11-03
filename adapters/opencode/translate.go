@@ -166,8 +166,9 @@ func FromEventDecision(d merger.Decision, ocEvent string) ([]byte, error) {
 		dj.Context = d.Context
 	}
 
-	if d.Rewrite != nil {
-		rw, err := json.Marshal(d.Rewrite)
+	// The bridge applies the bare tool input; unwrap the canonical form.
+	if ti, ok := merger.RewriteToolInput(d.Rewrite); ok {
+		rw, err := json.Marshal(ti)
 		if err != nil {
 			return nil, fmt.Errorf("opencode: marshal rewrite: %w", err)
 		}

@@ -271,3 +271,38 @@ func splitString(s string, sep rune) []string {
 	parts = append(parts, current)
 	return parts
 }
+
+func TestRunHooks_RewriteNormalizedToCanonical(t *testing.T) {
+	cases := map[string]string{
+		"bare":      `{"command":"ls -la"}`,
+		"canonical": `{"tool_input":{"command":"ls -la"}}`,
+	}
+	for name, rw := range cases {
+		t.Run(name, func(t *testing.T) {
+			dir := t.TempDir()
+			script := writeScript(t, dir, "rw.sh",
+				"#!/bin/sh\necho '{\"action\":\"rewrite\",\"rewrite\":"+rw+"}'\nexit 3\n")
+			ds := NewRunner().RunHooks(
+				[]config.HookEntry{{Name: "rw", Run: script}}, testEnvelope(), testConfig())
+			if len(ds) != 1 {
+				t.Fatalf("got %d decisions", len(ds))
+			}
+			m, _ := ds[0].Rewrite.(map[string]any)
+			ti, _ := m["tool_input"].(map[string]any)
+			if len(m) != 1 || ti["command"] != "ls -la" {
+				t.Fatalf("rewrite = %#v, want canonical tool_input form", ds[0].Rewrite)
+			}
+		})
+	}
+}
+
+func TestRunHooks_NonObjectRewriteUnchanged(t *testing.T) {
+	dir := t.TempDir()
+	script := writeScript(t, dir, "rw.sh",
+		"#!/bin/sh\necho '{\"action\":\"rewrite\",\"rewrite\":\"ls\"}'\nexit 3\n")
+	ds := NewRunner().RunHooks(
+		[]config.HookEntry{{Name: "rw", Run: script}}, testEnvelope(), testConfig())
+	if ds[0].Rewrite != "ls" {
+		t.Fatalf("rewrite = %#v, want untouched string", ds[0].Rewrite)
+	}
+}

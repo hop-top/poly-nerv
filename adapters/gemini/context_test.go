@@ -46,7 +46,7 @@ func TestFromEventDecision_Context_UnsupportedEventDropped(t *testing.T) {
 
 func TestFromEventDecision_Context_RewriteKeepsToolInput(t *testing.T) {
 	m, _, err := FromEventDecision(merger.Decision{
-		Action: merger.Rewrite, Rewrite: map[string]any{"c": 1}, Context: "ctx",
+		Action: merger.Rewrite, Rewrite: map[string]any{"tool_input": map[string]any{"c": 1}}, Context: "ctx",
 	}, "AfterTool")
 	if err != nil {
 		t.Fatal(err)

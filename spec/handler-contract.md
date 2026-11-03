@@ -77,7 +77,7 @@ treated as `{"action": "allow"}`.
 ```yaml
 action: allow | warn | block | rewrite   # required
 message: string                          # optional; shown for warn/block
-rewrite: object                          # optional; replacement payload (action=rewrite)
+rewrite: object                          # optional; replacement payload (action=rewrite); see Rewrite shape
 metadata: object                         # optional; attached to event log entry
 context: string                          # optional; model-facing text, any action
 ```
@@ -88,7 +88,7 @@ Decision schema:
 |------------|--------|----------|----------------------------------------|
 | `action`   | string | yes      | One of: allow, warn, block, rewrite    |
 | `message`  | string | no       | Human-readable; shown for warn/block. Accumulated alongside rewrite if both present. |
-| `rewrite`  | object | no       | Replacement payload; action must be rewrite |
+| `rewrite`  | object | no       | Replacement payload; action must be rewrite. Canonical form `{"tool_input": {...}}`; bare tool input accepted, see [Rewrite shape](#rewrite-shape) |
 | `metadata` | object | no       | Arbitrary KV; persisted in event log   |
 | `context`  | string | no       | Text for the model's context window. Valid with any action; see [Context](#context) |
 
@@ -106,6 +106,43 @@ level=warn. Fields are interpreted against the effective action:
 - exit 2 (block): honor `message`; ignore `rewrite`; honor `metadata`;
   `context` is accepted but dropped at merge
 - exit 3 (rewrite): honor `rewrite`; ignore `message`; honor `metadata`, `context`
+
+## Rewrite shape
+
+`rewrite` is payload-shaped. The canonical form is
+
+```json
+{"action": "rewrite", "rewrite": {"tool_input": {"command": "ls -la"}}}
+```
+
+`tool_input` is the new, whole tool input (not a diff). Other payload
+keys may be added to the canonical form later.
+
+Shorthand: a handler may return the bare tool input,
+`{"rewrite": {"command": "ls -la"}}`. The dispatcher normalizes it, at
+the point handler decisions are parsed and before merge, event log and
+replay, to `{"tool_input": {"command": "ls -la"}}`. Rule: if the
+rewrite object has a top-level `tool_input` key it is canonical and
+kept; otherwise the whole object is wrapped as `tool_input`. A
+non-object `rewrite` is not normalized and keeps its existing
+handling (adapters that need an object tool input ignore it).
+
+Edge case: a tool whose real input has a top-level key literally named
+`tool_input` is indistinguishable from the canonical form in shorthand;
+such a handler must use the wrapped form.
+
+Merge (multiple rewrites): composed left to right on the canonical
+form as a shallow merge of top-level payload keys. For each key a
+later rewrite replaces the earlier value whole; in particular a later
+`tool_input` replaces the earlier `tool_input` entirely (no deep
+merge, so a later hook that omits a field removes it). A non-object
+rewrite replaces everything accumulated before it.
+
+Adapters consume only the canonical form and hand the host the bare
+tool input (`tool_input` unwrapped): Claude and Codex
+`hookSpecificOutput.updatedInput`, Gemini `hookSpecificOutput.tool_input`,
+OpenCode bridge `rewrite`. Adapters without a rewrite channel (Goose,
+OpenHands) drop it. The gRPC `Decision.rewrite` carries the canonical form.
 
 ## Context
 
@@ -170,8 +207,9 @@ When multiple hooks fire for the same event, decisions merge:
 
 Rules:
 1. First `block` wins; remaining hooks skipped
-2. Multiple `rewrite` decisions compose left-to-right (sequential
-   application; later rewrites see output of earlier ones)
+2. Multiple `rewrite` decisions compose left-to-right: shallow merge
+   of top-level payload keys, later replacing earlier per key (see
+   [Rewrite shape](#rewrite-shape))
 3. Multiple `warn` messages concatenate (newline-separated)
 4. If a hook exits >=4, treat that hook as error: log it and
    continue merge as if that hook returned `allow`. This fail-open
@@ -189,7 +227,9 @@ Hook B: warn "Suspicious command"
 Hook C: rewrite { tool_input: { command: "ls -la" } }
 ```
 
-Result: rewrite wins (composed A then C), warn accumulated.
+Result: rewrite wins (composed A then C), warn accumulated. Each
+hook may equally return the bare shorthand (`rewrite: { command: "ls" }`);
+it is normalized to the form above before composing.
 Final: `{ action: "rewrite", rewrite: { tool_input: { command: "ls -la" } }, message: "Suspicious command" }`
 
 ## Timeout

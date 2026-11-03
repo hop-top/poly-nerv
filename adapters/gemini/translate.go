@@ -158,11 +158,11 @@ func FromEventDecision(d merger.Decision, geminiEvent string) (map[string]any, i
 		}
 	}
 
-	if d.Rewrite != nil {
+	if ti, ok := merger.RewriteToolInput(d.Rewrite); ok {
 		if out.HookSpecificOut == nil {
 			out.HookSpecificOut = make(map[string]any)
 		}
-		out.HookSpecificOut["tool_input"] = d.Rewrite
+		out.HookSpecificOut["tool_input"] = ti
 	}
 
 	if d.Context != "" && d.Action != merger.Block && contextEvents[geminiEvent] {

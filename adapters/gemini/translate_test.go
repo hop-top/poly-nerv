@@ -159,7 +159,7 @@ func TestFromDecision_Warn(t *testing.T) {
 }
 
 func TestFromDecision_Rewrite(t *testing.T) {
-	rewrite := map[string]any{"command": "ls -la"}
+	rewrite := map[string]any{"tool_input": map[string]any{"command": "ls -la"}}
 	m, code, err := FromDecision(merger.Decision{
 		Action:  merger.Rewrite,
 		Rewrite: rewrite,
@@ -174,8 +174,9 @@ func TestFromDecision_Rewrite(t *testing.T) {
 	if !ok {
 		t.Fatal("missing hookSpecificOutput")
 	}
-	if hso["tool_input"] == nil {
-		t.Error("missing tool_input in hookSpecificOutput")
+	ti, _ := hso["tool_input"].(map[string]any)
+	if ti["command"] != "ls -la" {
+		t.Errorf("tool_input = %v, want the bare tool input", hso["tool_input"])
 	}
 }
 

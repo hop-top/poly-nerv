@@ -65,6 +65,7 @@ class Decision:
 
     action: str  # allow | warn | block | rewrite
     message: str | None = None
+    # {"tool_input": {...}} or the bare tool input (nervd wraps it)
     rewrite: dict[str, Any] | None = None
     metadata: dict[str, Any] | None = None
     context: str | None = None  # model-facing text; any action

@@ -187,7 +187,7 @@ func TestFromDecision_Rewrite(t *testing.T) {
 	tr := &Translator{}
 
 	modifiedInput := json.RawMessage(
-		`{"command":"ls -la --no-color"}`,
+		`{"tool_input":{"command":"ls -la --no-color"}}`,
 	)
 	out, code, err := tr.FromDecision(
 		Decision{
@@ -284,5 +284,32 @@ func TestFromDecision_WorktreeEvents_Silent(t *testing.T) {
 				)
 			}
 		}
+	}
+}
+
+// updatedInput is the bare tool input; the canonical wrapper must not
+// leak to the host, and a payload with no tool_input is an error.
+func TestFromDecision_Rewrite_UnwrapsToolInput(t *testing.T) {
+	tr := &Translator{}
+	out, _, err := tr.FromDecision(Decision{
+		Action:  "rewrite",
+		Payload: json.RawMessage(`{"tool_input":{"command":"ls"}}`),
+	}, "PreToolUse")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var res map[string]map[string]any
+	if err := json.Unmarshal(out, &res); err != nil {
+		t.Fatal(err)
+	}
+	ui, _ := res["hookSpecificOutput"]["updatedInput"].(map[string]any)
+	if _, leaked := ui["tool_input"]; leaked || ui["command"] != "ls" {
+		t.Fatalf("updatedInput = %v, want {command: ls}", ui)
+	}
+
+	if _, _, err := tr.FromDecision(Decision{
+		Action: "rewrite", Payload: json.RawMessage(`{"command":"ls"}`),
+	}, "PreToolUse"); err == nil {
+		t.Fatal("payload without tool_input must error")
 	}
 }

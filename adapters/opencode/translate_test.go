@@ -159,7 +159,7 @@ func TestFromDecision_Block(t *testing.T) {
 func TestFromDecision_Rewrite(t *testing.T) {
 	d := merger.Decision{
 		Action:  merger.Rewrite,
-		Rewrite: map[string]string{"command": "ls -la"},
+		Rewrite: map[string]any{"tool_input": map[string]any{"command": "ls -la"}},
 	}
 	out, err := FromDecision(d)
 	if err != nil {
@@ -172,8 +172,8 @@ func TestFromDecision_Rewrite(t *testing.T) {
 	if dj.Action != "rewrite" {
 		t.Errorf("Action = %q, want rewrite", dj.Action)
 	}
-	if dj.Rewrite == nil {
-		t.Error("Rewrite is nil, want non-nil")
+	if string(dj.Rewrite) != `{"command":"ls -la"}` {
+		t.Errorf("Rewrite = %s, want the bare tool input", dj.Rewrite)
 	}
 }
 
@@ -215,7 +215,7 @@ func TestFromEventDecision_RewriteBefore(t *testing.T) {
 	d := merger.Decision{
 		Action:  merger.Rewrite,
 		Message: "w",
-		Rewrite: map[string]any{"command": "ls", "opts": map[string]any{"a": 1}},
+		Rewrite: map[string]any{"tool_input": map[string]any{"command": "ls", "opts": map[string]any{"a": 1}}},
 		Context: "ctx",
 	}
 	b, err := FromEventDecision(d, OCToolExecBefore)

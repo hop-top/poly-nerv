@@ -111,7 +111,7 @@ func TestFromDecision_Context_WithRewrite_PreToolUse(t *testing.T) {
 	tr := &Translator{}
 	out, code, err := tr.FromDecision(Decision{
 		Action:  "rewrite",
-		Payload: json.RawMessage(`{"command":"ls -la"}`),
+		Payload: json.RawMessage(`{"tool_input":{"command":"ls -la"}}`),
 		Context: "ctx",
 	}, "PreToolUse")
 	if err != nil {
@@ -133,7 +133,7 @@ func TestFromDecision_Context_WithRewrite_PermissionRequestDropped(t *testing.T)
 	tr := &Translator{}
 	out, _, err := tr.FromDecision(Decision{
 		Action:  "rewrite",
-		Payload: json.RawMessage(`{"command":"ls"}`),
+		Payload: json.RawMessage(`{"tool_input":{"command":"ls"}}`),
 		Context: "ctx",
 	}, "PermissionRequest")
 	if err != nil {

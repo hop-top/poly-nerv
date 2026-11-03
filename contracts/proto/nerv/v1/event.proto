@@ -92,7 +92,7 @@ message Envelope {
 message Decision {
   Action action = 1;
   string message = 2;
-  // Rewrite payload; shape is event-specific (e.g. tool input edit).
+  // Rewrite payload, canonical form {"tool_input": {...}} (handler-contract.md).
   google.protobuf.Struct rewrite = 3;
   // Free-form metadata bag, merged across handlers (last-write-wins
   // per key in the current Go merger).
