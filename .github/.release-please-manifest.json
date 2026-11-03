@@ -1,8 +1,8 @@
 {
-  ".": "0.1.0-alpha.0",
-  "sdk/go": "0.1.0-alpha.0",
-  "sdk/ts": "0.1.0-alpha.0",
-  "sdk/py": "0.1.0-alpha.0",
-  "sdk/rs": "0.1.0-alpha.0",
-  "sdk/php": "0.1.0-alpha.0"
+  ".": "0.1.0-alpha.1",
+  "sdk/go": "0.1.0-alpha.1",
+  "sdk/ts": "0.1.0-alpha.1",
+  "sdk/py": "0.1.0-alpha.1",
+  "sdk/rs": "0.1.0-alpha.1",
+  "sdk/php": "0.1.0-alpha.1"
 }
