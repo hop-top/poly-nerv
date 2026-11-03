@@ -230,12 +230,15 @@ func TestRecordWorkflowMatrixFromVersions(t *testing.T) {
 	}
 }
 
-// TestDockerfileUsesSharedInstall: sums live only in versions.yaml.
+// TestDockerfileUsesSharedInstall: CLI release sums live only in
+// versions.yaml. Base-image digest pins (`image@sha256:...`) are image
+// provenance, not CLI sums, and are allowed.
 func TestDockerfileUsesSharedInstall(t *testing.T) {
 	df := readFile(t, dockerfileTest)
 	if !strings.Contains(df, "scripts/install-cli.sh") {
 		t.Error("Dockerfile.test must install via scripts/install-cli.sh")
 	}
+	df = regexp.MustCompile(`@sha256:[0-9a-f]{64}`).ReplaceAllString(df, "@sha256:<digest>")
 	if m := regexp.MustCompile(`[0-9a-f]{64}`).FindString(df); m != "" {
 		t.Errorf("Dockerfile.test hardcodes a sha256 (%s...); "+
 			"keep sums in versions.yaml", m[:12])

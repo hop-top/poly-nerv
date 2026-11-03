@@ -168,7 +168,7 @@ nerv lint          Lint hooks.yaml for errors and warnings
 nerv remove        Remove a hook from the project
 nerv replay        Replay a recorded event through the hook pipeline
 nerv status        Show nerv daemon and adapter status
-nerv tail          Stream live hook events
+nerv tail          Stream live hook events (--no-follow: print recent and exit)
 nerv test          Run hook handlers with synthetic envelopes
 nerv upgrade       Show the installed version and the upgrade command
                    (nerv does not update itself)
