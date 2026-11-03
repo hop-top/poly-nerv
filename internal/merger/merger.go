@@ -51,7 +51,8 @@ type Decision struct {
 //
 // Rules:
 //   - First block wins; remaining decisions ignored.
-//   - Multiple rewrites compose left-to-right.
+//   - Multiple rewrites compose left-to-right on canonical form
+//     (see composeRewrites): shallow merge of top-level payload keys.
 //   - Multiple warns concatenate (newline-separated).
 //   - Contexts concatenate in hook order (newline-separated), capped at
 //     MaxContextBytes; dropped entirely when the merge blocks.
@@ -65,7 +66,6 @@ func Merge(decisions []Decision) Decision {
 		warns    []string
 		contexts []string
 		rewrites []any
-		lastRew  Decision
 		meta     = make(map[string]any)
 	)
 
@@ -98,7 +98,6 @@ func Merge(decisions []Decision) Decision {
 
 		case Rewrite:
 			rewrites = append(rewrites, d.Rewrite)
-			lastRew = d
 
 		case Warn:
 			if d.Message != "" {
@@ -121,7 +120,7 @@ func Merge(decisions []Decision) Decision {
 		return Decision{
 			Action:   Rewrite,
 			Message:  strings.Join(warns, "\n"),
-			Rewrite:  lastRew.Rewrite,
+			Rewrite:  composeRewrites(rewrites),
 			Metadata: meta,
 			Context:  ctx,
 		}

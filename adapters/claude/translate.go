@@ -202,10 +202,24 @@ func buildRewriteOutput(
 		)
 	}
 
-	var input map[string]any
-	if err := json.Unmarshal(payload, &input); err != nil {
+	// payload is the canonical rewrite ({"tool_input": {...}}); the host
+	// wants the bare tool input.
+	var canon map[string]json.RawMessage
+	if err := json.Unmarshal(payload, &canon); err != nil {
 		return nil, fmt.Errorf(
 			"claude: unmarshal rewrite payload: %w", err,
+		)
+	}
+	raw, ok := canon["tool_input"]
+	if !ok {
+		return nil, fmt.Errorf(
+			"claude: rewrite payload has no tool_input",
+		)
+	}
+	var input map[string]any
+	if err := json.Unmarshal(raw, &input); err != nil {
+		return nil, fmt.Errorf(
+			"claude: unmarshal rewrite tool_input: %w", err,
 		)
 	}
 

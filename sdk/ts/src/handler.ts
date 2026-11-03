@@ -22,6 +22,7 @@ export interface Envelope {
 export interface Decision {
   action: 'allow' | 'warn' | 'block' | 'rewrite';
   message?: string;
+  /** `{ tool_input: {...} }`, or the bare tool input (nervd wraps it). */
   rewrite?: Record<string, unknown>;
   metadata?: Record<string, unknown>;
   /** Model-facing text, valid with any action. */

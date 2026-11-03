@@ -100,8 +100,10 @@ Adapter: `adapters/openhands/translate.go` `FromEventDecision`.
 - Block works only by throwing from `tool.execute.before`
   (`adapters/opencode/shim.go`; v2: `ctx.tool.hook("execute.before")`,
   `shim_v2.go`, the message reaches the model).
-- Rewrite (before-tool only, both APIs): the rewrite object is the new
-  tool input, same as Claude's `updatedInput` (whole input, not a diff).
+- Rewrite (before-tool only, both APIs): nerv carries the canonical
+  `{"tool_input": {...}}`; the Go encoder unwraps it, so the bridge
+  receives the bare tool input, same as Claude's `updatedInput` (whole
+  input, not a diff). The bridge TS is unchanged.
   Replace semantics: the bridge clears the host's args object and assigns
   the rewrite onto it, in place. v1: `output.args` is the object the tool
   executes with (anomalyco/opencode v1.19.3
@@ -198,7 +200,8 @@ Adapter: `adapters/openhands/translate.go` `FromEventDecision`.
 - Context: SessionStart, UserPromptSubmit, PreToolUse, PostToolUse. Stop,
   SubagentStop and compaction outputs reject unknown fields, so
   `context` is dropped there (Claude accepts it on Stop).
-- Block, warn and rewrite reuse the Claude encoding. Rewrite honoring
+- Block, warn and rewrite reuse the Claude encoding (canonical rewrite
+  unwrapped to `updatedInput`). Rewrite honoring
   by Codex is not verified.
 
 ### <a id="flag-gemini"></a>◐ Gemini — approximations
@@ -206,8 +209,8 @@ Adapter: `adapters/openhands/translate.go` `FromEventDecision`.
 - UserPromptSubmit is `BeforeModel` (fires per model call, not per user
   prompt); Stop is `SessionEnd` (graceful exit only); PostCompact is
   detected from a marker in `AfterModel` (`close:` entries).
-- Rewrite is emitted as `hookSpecificOutput.tool_input`; host
-  honoring not verified.
+- Rewrite is emitted as `hookSpecificOutput.tool_input` (the unwrapped
+  tool input of the canonical rewrite); host honoring not verified.
 - `StopFailure` is undeclared in `capabilities.yaml` (research notes
   list a workaround) and renders `-`.
 

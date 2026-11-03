@@ -83,7 +83,7 @@ func TestFromEventDecision_Context_IgnoredOnBlock(t *testing.T) {
 
 func TestFromEventDecision_Context_RewriteKeepsUpdatedInput(t *testing.T) {
 	out, _, err := FromEventDecision(merger.Decision{
-		Action: merger.Rewrite, Rewrite: map[string]any{"command": "ls -la"}, Context: "ctx",
+		Action: merger.Rewrite, Rewrite: map[string]any{"tool_input": map[string]any{"command": "ls -la"}}, Context: "ctx",
 	}, "PreToolUse")
 	if err != nil {
 		t.Fatal(err)

@@ -454,7 +454,7 @@ type Decision struct {
 	state   protoimpl.MessageState `protogen:"open.v1"`
 	Action  Action                 `protobuf:"varint,1,opt,name=action,proto3,enum=nerv.v1.Action" json:"action,omitempty"`
 	Message string                 `protobuf:"bytes,2,opt,name=message,proto3" json:"message,omitempty"`
-	// Rewrite payload; shape is event-specific (e.g. tool input edit).
+	// Rewrite payload, canonical form {"tool_input": {...}} (handler-contract.md).
 	Rewrite *structpb.Struct `protobuf:"bytes,3,opt,name=rewrite,proto3" json:"rewrite,omitempty"`
 	// Free-form metadata bag, merged across handlers (last-write-wins
 	// per key in the current Go merger).

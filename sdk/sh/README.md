@@ -44,7 +44,7 @@ nerv_allow
 | `nerv_allow`          | Output allow decision; exit 0              |
 | `nerv_warn [msg]`     | Output warn decision; exit 1               |
 | `nerv_block [msg]`    | Output block decision; exit 2              |
-| `nerv_rewrite <json>` | Output rewrite decision; exit 3            |
+| `nerv_rewrite <json>` | Output rewrite decision; exit 3. `<json>` is `{"tool_input": {...}}` or the bare tool input (nervd wraps it) |
 | `nerv_context <text>` | Queue text for the model's context; the next decision carries it as `context` (repeated calls join with newlines) |
 
 Context for the model (not the user) — call `nerv_context` before the

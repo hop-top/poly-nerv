@@ -123,6 +123,9 @@ func (r *Runner) RunHooks(
 		} else {
 			d = r.runOne(h, env, cfg.Defaults)
 		}
+		// Single normalization point: every handler rewrite (external
+		// or builtin) is canonical before merge, log, replay and adapters.
+		d.Rewrite = merger.NormalizeRewrite(d.Rewrite)
 		decisions = append(decisions, d)
 	}
 	return decisions

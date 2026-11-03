@@ -211,7 +211,7 @@ export type Decision = Message<"nerv.v1.Decision"> & {
   message: string;
 
   /**
-   * Rewrite payload; shape is event-specific (e.g. tool input edit).
+   * Rewrite payload, canonical form {"tool_input": {...}} (handler-contract.md).
    *
    * @generated from field: google.protobuf.Struct rewrite = 3;
    */
