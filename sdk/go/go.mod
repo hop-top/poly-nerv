@@ -5,7 +5,7 @@ go 1.27.3
 require (
 	connectrpc.com/connect v1.21.1
 	google.golang.org/protobuf v1.36.12
-	hop.top/nerv v0.1.0-alpha.0 // x-release-please-version
+	hop.top/nerv v0.1.0-alpha.1 // x-release-please-version
 )
 
 // Local development only. Consumers never see this replace (Go ignores
