@@ -31,9 +31,8 @@ func disableCmd() *cobra.Command {
                hook stays live on most events but skips a single one.
 
 All sub-modes are idempotent — re-disabling an already-disabled name
-is a no-op. Daemon-side enforcement of the disabled state lands
-separately; this verb only writes the configuration. Pair
-with 'nerv enable' to reverse.`,
+is a no-op. This verb only writes the configuration; the daemon applies
+it. Pair with 'nerv enable' to reverse.`,
 		Annotations: map[string]string{
 			"kit/top-level-verb": "true",
 		},
